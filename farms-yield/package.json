@@ -1,0 +1,37 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "verify": "truffle run verify BridgeSwapToken MasterChef --network bsctestnet"
+  },
+  "author": "Grim",
+  "license": "ISC",
+  "dependencies": {
+    "@chainlink/contracts": "^0.3.0",
+    "@openzeppelin/contracts": "^4.4.1",
+    "@openzeppelin/test-helpers": "^0.5.15",
+    "@openzeppelin/truffle-upgrades": "^1.11.0",
+    "@truffle/hdwallet-provider": "^2.0.0",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "chai": "^4.3.4",
+    "dotenv": "^10.0.0",
+    "git-cz": "^4.8.0",
+    "solhint": "^3.3.6",
+    "truffle-plugin-verify": "^0.5.20"
+  },
+  "devDependencies": {
+    "cz-conventional-changelog": "3.3.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/git-cz"
+    }
+  }
+}
