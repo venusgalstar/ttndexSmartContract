@@ -47,7 +47,7 @@
 		},
 		"gasEstimates": null,
 		"methodIdentifiers": {
-			"bridgeswapCall(address,uint256,uint256,bytes)": "21ef9ac9"
+			"TTNEXCall(address,uint256,uint256,bytes)": "21ef9ac9"
 		}
 	},
 	"abi": [
@@ -74,7 +74,7 @@
 					"type": "bytes"
 				}
 			],
-			"name": "bridgeswapCall",
+			"name": "TTNEXCall",
 			"outputs": [],
 			"stateMutability": "nonpayable",
 			"type": "function"

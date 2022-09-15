@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapERC20 {
+interface ITTNEXERC20 {
     function name() external pure returns (string memory);
     function symbol() external pure returns (string memory);
     function decimals() external pure returns (uint8);

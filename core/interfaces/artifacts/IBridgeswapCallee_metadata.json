@@ -28,7 +28,7 @@
 						"type": "bytes"
 					}
 				],
-				"name": "bridgeswapCall",
+				"name": "TTNEXCall",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -47,7 +47,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"interfaces/IBridgeswapCallee.sol": "IBridgeswapCallee"
+			"interfaces/ITTNEXCallee.sol": "ITTNEXCallee"
 		},
 		"evmVersion": "istanbul",
 		"libraries": {},
@@ -61,7 +61,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"interfaces/IBridgeswapCallee.sol": {
+		"interfaces/ITTNEXCallee.sol": {
 			"keccak256": "0xa7e515e2e6a3d47311a6994a1bf150280c22fa3fd10fa94f173e1609479ac10c",
 			"license": "MIT",
 			"urls": [

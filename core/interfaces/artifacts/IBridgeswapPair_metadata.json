@@ -242,7 +242,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"interfaces/IBridgeswapPair.sol": "IBridgeswapPair"
+			"interfaces/ITTNEXPair.sol": "ITTNEXPair"
 		},
 		"evmVersion": "istanbul",
 		"libraries": {},
@@ -256,7 +256,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"interfaces/IBridgeswapPair.sol": {
+		"interfaces/ITTNEXPair.sol": {
 			"keccak256": "0xf4c2bb3efc4f79d8cbab67b5166f491d4170ce06cce0eeb922a1f63ddbdf5465",
 			"license": "MIT",
 			"urls": [

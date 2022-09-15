@@ -279,7 +279,7 @@
 	},
 	"settings": {
 		"compilationTarget": {
-			"interfaces/IBridgeswapERC20.sol": "IBridgeswapERC20"
+			"interfaces/ITTNEXERC20.sol": "ITTNEXERC20"
 		},
 		"evmVersion": "istanbul",
 		"libraries": {},
@@ -293,7 +293,7 @@
 		"remappings": []
 	},
 	"sources": {
-		"interfaces/IBridgeswapERC20.sol": {
+		"interfaces/ITTNEXERC20.sol": {
 			"keccak256": "0xb674f6a9972c901fb30db0ed295693bb21f2ed7b532f42e632281a1fbc4f9048",
 			"license": "MIT",
 			"urls": [

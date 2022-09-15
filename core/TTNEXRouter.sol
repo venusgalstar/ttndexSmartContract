@@ -29,11 +29,11 @@ library TransferHelper {
     }
 }
 
-// File: contracts\interfaces\IBridgeswapRouter01.sol
+// File: contracts\interfaces\ITTNEXRouter01.sol
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapRouter01 {
+interface ITTNEXRouter01 {
     function factory() external view returns (address);
     function WETH() external view returns (address);
 
@@ -127,11 +127,11 @@ interface IBridgeswapRouter01 {
     function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
 }
 
-// File: contracts\interfaces\IBridgeswapRouter02.sol
+// File: contracts\interfaces\ITTNEXRouter02.sol
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapRouter02 is IBridgeswapRouter01 {
+interface ITTNEXRouter02 is ITTNEXRouter01 {
     function removeLiquidityETHSupportingFeeOnTransferTokens(
         address token,
         uint liquidity,
@@ -172,11 +172,11 @@ interface IBridgeswapRouter02 is IBridgeswapRouter01 {
     ) external;
 }
 
-// File: contracts\interfaces\IBridgeswapFactory.sol
+// File: contracts\interfaces\ITTNEXFactory.sol
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapFactory {
+interface ITTNEXFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     function feeTo() external view returns (address);
@@ -214,11 +214,11 @@ library SafeMath {
     }
 }
 
-// File: contracts\interfaces\IBridgeswapPair.sol
+// File: contracts\interfaces\ITTNEXPair.sol
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapPair {
+interface ITTNEXPair {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
@@ -269,20 +269,20 @@ interface IBridgeswapPair {
     function initialize(address, address) external;
 }
 
-// File: contracts\libraries\BridgeswapLibrary.sol
+// File: contracts\libraries\TTNEXLibrary.sol
 
 pragma solidity ^0.8.0;
 
 
 
-library BridgeswapLibrary {
+library TTNEXLibrary {
     using SafeMath for uint;
 
     // returns sorted token addresses, used to handle return values from pairs sorted in this order
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'BridgeswapLibrary: IDENTICAL_ADDRESSES');
+        require(tokenA != tokenB, 'TTNEXLibrary: IDENTICAL_ADDRESSES');
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'BridgeswapLibrary: ZERO_ADDRESS');
+        require(token0 != address(0), 'TTNEXLibrary: ZERO_ADDRESS');
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
@@ -300,21 +300,21 @@ library BridgeswapLibrary {
     function getReserves(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB) {
         (address token0,) = sortTokens(tokenA, tokenB);
         pairFor(factory, tokenA, tokenB);
-        (uint reserve0, uint reserve1,) = IBridgeswapPair(pairFor(factory, tokenA, tokenB)).getReserves();
+        (uint reserve0, uint reserve1,) = ITTNEXPair(pairFor(factory, tokenA, tokenB)).getReserves();
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
-        require(amountA > 0, 'BridgeswapLibrary: INSUFFICIENT_AMOUNT');
-        require(reserveA > 0 && reserveB > 0, 'BridgeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountA > 0, 'TTNEXLibrary: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'TTNEXLibrary: INSUFFICIENT_LIQUIDITY');
         amountB = amountA.mul(reserveB) / reserveA;
     }
 
     // given an input amount of an asset and pair reserves, returns the maximum output amount of the other asset
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) internal pure returns (uint amountOut) {
-        require(amountIn > 0, 'BridgeswapLibrary: INSUFFICIENT_INPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'BridgeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountIn > 0, 'TTNEXLibrary: INSUFFICIENT_INPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'TTNEXLibrary: INSUFFICIENT_LIQUIDITY');
         uint amountInWithFee = amountIn.mul(9975);
         uint numerator = amountInWithFee.mul(reserveOut);
         uint denominator = reserveIn.mul(10000).add(amountInWithFee);
@@ -323,8 +323,8 @@ library BridgeswapLibrary {
 
     // given an output amount of an asset and pair reserves, returns a required input amount of the other asset
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) internal pure returns (uint amountIn) {
-        require(amountOut > 0, 'BridgeswapLibrary: INSUFFICIENT_OUTPUT_AMOUNT');
-        require(reserveIn > 0 && reserveOut > 0, 'BridgeswapLibrary: INSUFFICIENT_LIQUIDITY');
+        require(amountOut > 0, 'TTNEXLibrary: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(reserveIn > 0 && reserveOut > 0, 'TTNEXLibrary: INSUFFICIENT_LIQUIDITY');
         uint numerator = reserveIn.mul(amountOut).mul(10000);
         uint denominator = reserveOut.sub(amountOut).mul(9975);
         amountIn = (numerator / denominator).add(1);
@@ -332,7 +332,7 @@ library BridgeswapLibrary {
 
     // performs chained getAmountOut calculations on any number of pairs
     function getAmountsOut(address factory, uint amountIn, address[] memory path) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'BridgeswapLibrary: INVALID_PATH');
+        require(path.length >= 2, 'TTNEXLibrary: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[0] = amountIn;
         for (uint i; i < path.length - 1; i++) {
@@ -343,7 +343,7 @@ library BridgeswapLibrary {
 
     // performs chained getAmountIn calculations on any number of pairs
     function getAmountsIn(address factory, uint amountOut, address[] memory path) internal view returns (uint[] memory amounts) {
-        require(path.length >= 2, 'BridgeswapLibrary: INVALID_PATH');
+        require(path.length >= 2, 'TTNEXLibrary: INVALID_PATH');
         amounts = new uint[](path.length);
         amounts[amounts.length - 1] = amountOut;
         for (uint i = path.length - 1; i > 0; i--) {
@@ -383,7 +383,7 @@ interface IWETH {
     function withdraw(uint) external;
 }
 
-// File: contracts\BridgeswapRouter.sol
+// File: contracts\TTNEXRouter.sol
 
 pragma solidity ^0.8.0;
 
@@ -393,14 +393,14 @@ pragma solidity ^0.8.0;
 
 
 
-contract BridgeswapRouter is IBridgeswapRouter02 {
+contract TTNEXRouter is ITTNEXRouter02 {
     using SafeMath for uint;
 
     address public immutable override factory;
     address public immutable override WETH;
 
     modifier ensure(uint deadline) {
-        require(deadline >= block.timestamp, 'BridgeswapRouter: EXPIRED');
+        require(deadline >= block.timestamp, 'TTNEXRouter: EXPIRED');
         _;
     }
 
@@ -423,21 +423,21 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint amountBMin
     ) internal virtual returns (uint amountA, uint amountB) {
         // create the pair if it doesn't exist yet
-        if (IBridgeswapFactory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IBridgeswapFactory(factory).createPair(tokenA, tokenB);
+        if (ITTNEXFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            ITTNEXFactory(factory).createPair(tokenA, tokenB);
         }
-        (uint reserveA, uint reserveB) = BridgeswapLibrary.getReserves(factory, tokenA, tokenB);
+        (uint reserveA, uint reserveB) = TTNEXLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
             (amountA, amountB) = (amountADesired, amountBDesired);
         } else {
-            uint amountBOptimal = BridgeswapLibrary.quote(amountADesired, reserveA, reserveB);
+            uint amountBOptimal = TTNEXLibrary.quote(amountADesired, reserveA, reserveB);
             if (amountBOptimal <= amountBDesired) {
-                require(amountBOptimal >= amountBMin, 'BridgeswapRouter: INSUFFICIENT_B_AMOUNT');
+                require(amountBOptimal >= amountBMin, 'TTNEXRouter: INSUFFICIENT_B_AMOUNT');
                 (amountA, amountB) = (amountADesired, amountBOptimal);
             } else {
-                uint amountAOptimal = BridgeswapLibrary.quote(amountBDesired, reserveB, reserveA);
+                uint amountAOptimal = TTNEXLibrary.quote(amountBDesired, reserveB, reserveA);
                 assert(amountAOptimal <= amountADesired);
-                require(amountAOptimal >= amountAMin, 'BridgeswapRouter: INSUFFICIENT_A_AMOUNT');
+                require(amountAOptimal >= amountAMin, 'TTNEXRouter: INSUFFICIENT_A_AMOUNT');
                 (amountA, amountB) = (amountAOptimal, amountBDesired);
             }
         }
@@ -453,10 +453,10 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint deadline
     ) external virtual override ensure(deadline) returns (uint amountA, uint amountB, uint liquidity) {
         (amountA, amountB) = _addLiquidity(tokenA, tokenB, amountADesired, amountBDesired, amountAMin, amountBMin);
-        address pair = BridgeswapLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = TTNEXLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IBridgeswapPair(pair).mint(to);
+        liquidity = ITTNEXPair(pair).mint(to);
     }
     function addLiquidityETH(
         address token,
@@ -474,11 +474,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
             amountTokenMin,
             amountETHMin
         );
-        address pair = BridgeswapLibrary.pairFor(factory, token, WETH);
+        address pair = TTNEXLibrary.pairFor(factory, token, WETH);
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IBridgeswapPair(pair).mint(to);
+        liquidity = ITTNEXPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -493,13 +493,13 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         address to,
         uint deadline
     ) public virtual override ensure(deadline) returns (uint amountA, uint amountB) {
-        address pair = BridgeswapLibrary.pairFor(factory, tokenA, tokenB);
-        IBridgeswapPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint amount0, uint amount1) = IBridgeswapPair(pair).burn(to);
-        (address token0,) = BridgeswapLibrary.sortTokens(tokenA, tokenB);
+        address pair = TTNEXLibrary.pairFor(factory, tokenA, tokenB);
+        ITTNEXPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint amount0, uint amount1) = ITTNEXPair(pair).burn(to);
+        (address token0,) = TTNEXLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
-        require(amountA >= amountAMin, 'BridgeswapRouter: INSUFFICIENT_A_AMOUNT');
-        require(amountB >= amountBMin, 'BridgeswapRouter: INSUFFICIENT_B_AMOUNT');
+        require(amountA >= amountAMin, 'TTNEXRouter: INSUFFICIENT_A_AMOUNT');
+        require(amountB >= amountBMin, 'TTNEXRouter: INSUFFICIENT_B_AMOUNT');
     }
     function removeLiquidityETH(
         address token,
@@ -532,9 +532,9 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountA, uint amountB) {
-        address pair = BridgeswapLibrary.pairFor(factory, tokenA, tokenB);
+        address pair = TTNEXLibrary.pairFor(factory, tokenA, tokenB);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IBridgeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        ITTNEXPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
     function removeLiquidityETHWithPermit(
@@ -546,9 +546,9 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountToken, uint amountETH) {
-        address pair = BridgeswapLibrary.pairFor(factory, token, WETH);
+        address pair = TTNEXLibrary.pairFor(factory, token, WETH);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IBridgeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        ITTNEXPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -583,9 +583,9 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint deadline,
         bool approveMax, uint8 v, bytes32 r, bytes32 s
     ) external virtual override returns (uint amountETH) {
-        address pair = BridgeswapLibrary.pairFor(factory, token, WETH);
+        address pair = TTNEXLibrary.pairFor(factory, token, WETH);
         uint value = approveMax ? type(uint256).max : liquidity;
-        IBridgeswapPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        ITTNEXPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token, liquidity, amountTokenMin, amountETHMin, to, deadline
         );
@@ -596,11 +596,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
     function _swap(uint[] memory amounts, address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = BridgeswapLibrary.sortTokens(input, output);
+            (address token0,) = TTNEXLibrary.sortTokens(input, output);
             uint amountOut = amounts[i + 1];
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOut) : (amountOut, uint(0));
-            address to = i < path.length - 2 ? BridgeswapLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IBridgeswapPair(BridgeswapLibrary.pairFor(factory, input, output)).swap(
+            address to = i < path.length - 2 ? TTNEXLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            ITTNEXPair(TTNEXLibrary.pairFor(factory, input, output)).swap(
                 amount0Out, amount1Out, to, new bytes(0)
             );
         }
@@ -612,10 +612,10 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        amounts = BridgeswapLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        amounts = TTNEXLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -626,10 +626,10 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         address to,
         uint deadline
     ) external virtual override ensure(deadline) returns (uint[] memory amounts) {
-        amounts = BridgeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'BridgeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        amounts = TTNEXLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, 'TTNEXRouter: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, to);
     }
@@ -641,11 +641,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, 'BridgeswapRouter: INVALID_PATH');
-        amounts = BridgeswapLibrary.getAmountsOut(factory, msg.value, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(path[0] == WETH, 'TTNEXRouter: INVALID_PATH');
+        amounts = TTNEXLibrary.getAmountsOut(factory, msg.value, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
     }
     function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
@@ -655,11 +655,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, 'BridgeswapRouter: INVALID_PATH');
-        amounts = BridgeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= amountInMax, 'BridgeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        require(path[path.length - 1] == WETH, 'TTNEXRouter: INVALID_PATH');
+        amounts = TTNEXLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= amountInMax, 'TTNEXRouter: EXCESSIVE_INPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -672,11 +672,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[path.length - 1] == WETH, 'BridgeswapRouter: INVALID_PATH');
-        amounts = BridgeswapLibrary.getAmountsOut(factory, amountIn, path);
-        require(amounts[amounts.length - 1] >= amountOutMin, 'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(path[path.length - 1] == WETH, 'TTNEXRouter: INVALID_PATH');
+        amounts = TTNEXLibrary.getAmountsOut(factory, amountIn, path);
+        require(amounts[amounts.length - 1] >= amountOutMin, 'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]
         );
         _swap(amounts, path, address(this));
         IWETH(WETH).withdraw(amounts[amounts.length - 1]);
@@ -690,11 +690,11 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         ensure(deadline)
         returns (uint[] memory amounts)
     {
-        require(path[0] == WETH, 'BridgeswapRouter: INVALID_PATH');
-        amounts = BridgeswapLibrary.getAmountsIn(factory, amountOut, path);
-        require(amounts[0] <= msg.value, 'BridgeswapRouter: EXCESSIVE_INPUT_AMOUNT');
+        require(path[0] == WETH, 'TTNEXRouter: INVALID_PATH');
+        amounts = TTNEXLibrary.getAmountsIn(factory, amountOut, path);
+        require(amounts[0] <= msg.value, 'TTNEXRouter: EXCESSIVE_INPUT_AMOUNT');
         IWETH(WETH).deposit{value: amounts[0]}();
-        assert(IWETH(WETH).transfer(BridgeswapLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
+        assert(IWETH(WETH).transfer(TTNEXLibrary.pairFor(factory, path[0], path[1]), amounts[0]));
         _swap(amounts, path, to);
         // refund dust eth, if any
         if (msg.value > amounts[0]) TransferHelper.safeTransferETH(msg.sender, msg.value - amounts[0]);
@@ -705,18 +705,18 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
     function _swapSupportingFeeOnTransferTokens(address[] memory path, address _to) internal virtual {
         for (uint i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
-            (address token0,) = BridgeswapLibrary.sortTokens(input, output);
-            IBridgeswapPair pair = IBridgeswapPair(BridgeswapLibrary.pairFor(factory, input, output));
+            (address token0,) = TTNEXLibrary.sortTokens(input, output);
+            ITTNEXPair pair = ITTNEXPair(TTNEXLibrary.pairFor(factory, input, output));
             uint amountInput;
             uint amountOutput;
             { // scope to avoid stack too deep errors
             (uint reserve0, uint reserve1,) = pair.getReserves();
             (uint reserveInput, uint reserveOutput) = input == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
             amountInput = IERC20(input).balanceOf(address(pair)).sub(reserveInput);
-            amountOutput = BridgeswapLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
+            amountOutput = TTNEXLibrary.getAmountOut(amountInput, reserveInput, reserveOutput);
             }
             (uint amount0Out, uint amount1Out) = input == token0 ? (uint(0), amountOutput) : (amountOutput, uint(0));
-            address to = i < path.length - 2 ? BridgeswapLibrary.pairFor(factory, output, path[i + 2]) : _to;
+            address to = i < path.length - 2 ? TTNEXLibrary.pairFor(factory, output, path[i + 2]) : _to;
             pair.swap(amount0Out, amount1Out, to, new bytes(0));
         }
     }
@@ -728,13 +728,13 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         uint deadline
     ) external virtual override ensure(deadline) {
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amountIn
         );
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
+            'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT'
         );
     }
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
@@ -749,15 +749,15 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         payable
         ensure(deadline)
     {
-        require(path[0] == WETH, 'BridgeswapRouter: INVALID_PATH');
+        require(path[0] == WETH, 'TTNEXRouter: INVALID_PATH');
         uint amountIn = msg.value;
         IWETH(WETH).deposit{value: amountIn}();
-        assert(IWETH(WETH).transfer(BridgeswapLibrary.pairFor(factory, path[0], path[1]), amountIn));
+        assert(IWETH(WETH).transfer(TTNEXLibrary.pairFor(factory, path[0], path[1]), amountIn));
         uint balanceBefore = IERC20(path[path.length - 1]).balanceOf(to);
         _swapSupportingFeeOnTransferTokens(path, to);
         require(
             IERC20(path[path.length - 1]).balanceOf(to).sub(balanceBefore) >= amountOutMin,
-            'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT'
+            'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT'
         );
     }
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
@@ -772,20 +772,20 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         override
         ensure(deadline)
     {
-        require(path[path.length - 1] == WETH, 'BridgeswapRouter: INVALID_PATH');
+        require(path[path.length - 1] == WETH, 'TTNEXRouter: INVALID_PATH');
         TransferHelper.safeTransferFrom(
-            path[0], msg.sender, BridgeswapLibrary.pairFor(factory, path[0], path[1]), amountIn
+            path[0], msg.sender, TTNEXLibrary.pairFor(factory, path[0], path[1]), amountIn
         );
         _swapSupportingFeeOnTransferTokens(path, address(this));
         uint amountOut = IERC20(WETH).balanceOf(address(this));
-        require(amountOut >= amountOutMin, 'BridgeswapRouter: INSUFFICIENT_OUTPUT_AMOUNT');
+        require(amountOut >= amountOutMin, 'TTNEXRouter: INSUFFICIENT_OUTPUT_AMOUNT');
         IWETH(WETH).withdraw(amountOut);
         TransferHelper.safeTransferETH(to, amountOut);
     }
 
     // **** LIBRARY FUNCTIONS ****
     function quote(uint amountA, uint reserveA, uint reserveB) public pure virtual override returns (uint amountB) {
-        return BridgeswapLibrary.quote(amountA, reserveA, reserveB);
+        return TTNEXLibrary.quote(amountA, reserveA, reserveB);
     }
 
     function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut)
@@ -795,7 +795,7 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         override
         returns (uint amountOut)
     {
-        return BridgeswapLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
+        return TTNEXLibrary.getAmountOut(amountIn, reserveIn, reserveOut);
     }
 
     function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
@@ -805,7 +805,7 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         override
         returns (uint amountIn)
     {
-        return BridgeswapLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
+        return TTNEXLibrary.getAmountIn(amountOut, reserveIn, reserveOut);
     }
 
     function getAmountsOut(uint amountIn, address[] memory path)
@@ -815,7 +815,7 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         override
         returns (uint[] memory amounts)
     {
-        return BridgeswapLibrary.getAmountsOut(factory, amountIn, path);
+        return TTNEXLibrary.getAmountsOut(factory, amountIn, path);
     }
 
     function getAmountsIn(uint amountOut, address[] memory path)
@@ -825,6 +825,6 @@ contract BridgeswapRouter is IBridgeswapRouter02 {
         override
         returns (uint[] memory amounts)
     {
-        return BridgeswapLibrary.getAmountsIn(factory, amountOut, path);
+        return TTNEXLibrary.getAmountsIn(factory, amountOut, path);
     }
 }

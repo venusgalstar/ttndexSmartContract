@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IBridgeswapFactory.sol";
-import "./BridgeswapPair.sol";
+import "./interfaces/ITTNEXFactory.sol";
+import "./TTNEXPair.sol";
 
-contract BridgeswapFactory is IBridgeswapFactory {
-    bytes32 public constant INIT_CODE_PAIR_HASH = keccak256(abi.encodePacked(type(BridgeswapPair).creationCode));
+contract TTNEXFactory is ITTNEXFactory {
+    bytes32 public constant INIT_CODE_PAIR_HASH = keccak256(abi.encodePacked(type(TTNEXPair).creationCode));
 
     address public override feeTo;
     address public override feeToSetter;
@@ -25,16 +25,16 @@ contract BridgeswapFactory is IBridgeswapFactory {
     }
 
     function createPair(address tokenA, address tokenB) external override returns (address pair) {
-        require(tokenA != tokenB, 'Bridgeswap: IDENTICAL_ADDRESSES');
+        require(tokenA != tokenB, 'TTNEX: IDENTICAL_ADDRESSES');
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'Bridgeswap: ZERO_ADDRESS');
-        require(getPair[token0][token1] == address(0), 'Bridgeswap: PAIR_EXISTS'); // single check is sufficient
-        bytes memory bytecode = type(BridgeswapPair).creationCode;
+        require(token0 != address(0), 'TTNEX: ZERO_ADDRESS');
+        require(getPair[token0][token1] == address(0), 'TTNEX: PAIR_EXISTS'); // single check is sufficient
+        bytes memory bytecode = type(TTNEXPair).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-        IBridgeswapPair(pair).initialize(token0, token1);
+        ITTNEXPair(pair).initialize(token0, token1);
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);
@@ -42,12 +42,12 @@ contract BridgeswapFactory is IBridgeswapFactory {
     }
 
     function setFeeTo(address _feeTo) external override {
-        require(msg.sender == feeToSetter, 'Bridgeswap: FORBIDDEN');
+        require(msg.sender == feeToSetter, 'TTNEX: FORBIDDEN');
         feeTo = _feeTo;
     }
 
     function setFeeToSetter(address _feeToSetter) external override {
-        require(msg.sender == feeToSetter, 'Bridgeswap: FORBIDDEN');
+        require(msg.sender == feeToSetter, 'TTNEX: FORBIDDEN');
         feeToSetter = _feeToSetter;
     }
 }

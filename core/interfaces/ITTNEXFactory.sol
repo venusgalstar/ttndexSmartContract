@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IBridgeswapFactory {
+interface ITTNEXFactory {
 
     function feeTo() external view returns (address);
     function feeToSetter() external view returns (address);
