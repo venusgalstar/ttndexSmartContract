@@ -6,8 +6,8 @@
 	"input": {
 		"language": "Solidity",
 		"sources": {
-			"interfaces/ITTNEXCallee.sol": {
-				"content": "//SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface ITTNEXCallee {\n    function TTNEXCall(address sender, uint amount0, uint amount1, bytes calldata data) external;\n}\n"
+			"interfaces/IBridgeswapCallee.sol": {
+				"content": "//SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ninterface IBridgeswapCallee {\n    function bridgeswapCall(address sender, uint amount0, uint amount1, bytes calldata data) external;\n}\n"
 			}
 		},
 		"settings": {
@@ -38,8 +38,8 @@
 	},
 	"output": {
 		"contracts": {
-			"interfaces/ITTNEXCallee.sol": {
-				"ITTNEXCallee": {
+			"interfaces/IBridgeswapCallee.sol": {
+				"IBridgeswapCallee": {
 					"abi": [
 						{
 							"inputs": [
@@ -64,7 +64,7 @@
 									"type": "bytes"
 								}
 							],
-							"name": "TTNEXCall",
+							"name": "bridgeswapCall",
 							"outputs": [],
 							"stateMutability": "nonpayable",
 							"type": "function"
@@ -95,10 +95,10 @@
 						"gasEstimates": null,
 						"legacyAssembly": null,
 						"methodIdentifiers": {
-							"TTNEXCall(address,uint256,uint256,bytes)": "21ef9ac9"
+							"bridgeswapCall(address,uint256,uint256,bytes)": "21ef9ac9"
 						}
 					},
-					"metadata": "{\"compiler\":{\"version\":\"0.8.0+commit.c7dfd78e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount0\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount1\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"TTNEXCall\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"interfaces/ITTNEXCallee.sol\":\"ITTNEXCallee\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"interfaces/ITTNEXCallee.sol\":{\"keccak256\":\"0xa7e515e2e6a3d47311a6994a1bf150280c22fa3fd10fa94f173e1609479ac10c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://adf86a7e531e05738fedcc6d4ac410407220bb56762be8df68b01eff97017206\",\"dweb:/ipfs/QmUTtAcKeQSkxrQqqnaDnpH5UkX9afm4xigZ6mapfRd5VA\"]}},\"version\":1}",
+					"metadata": "{\"compiler\":{\"version\":\"0.8.0+commit.c7dfd78e\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount0\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount1\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"bridgeswapCall\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"interfaces/IBridgeswapCallee.sol\":\"IBridgeswapCallee\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"interfaces/IBridgeswapCallee.sol\":{\"keccak256\":\"0xa7e515e2e6a3d47311a6994a1bf150280c22fa3fd10fa94f173e1609479ac10c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://adf86a7e531e05738fedcc6d4ac410407220bb56762be8df68b01eff97017206\",\"dweb:/ipfs/QmUTtAcKeQSkxrQqqnaDnpH5UkX9afm4xigZ6mapfRd5VA\"]}},\"version\":1}",
 					"userdoc": {
 						"kind": "user",
 						"methods": {},
@@ -108,11 +108,11 @@
 			}
 		},
 		"sources": {
-			"interfaces/ITTNEXCallee.sol": {
+			"interfaces/IBridgeswapCallee.sol": {
 				"ast": {
-					"absolutePath": "interfaces/ITTNEXCallee.sol",
+					"absolutePath": "interfaces/IBridgeswapCallee.sol",
 					"exportedSymbols": {
-						"ITTNEXCallee": [
+						"IBridgeswapCallee": [
 							13
 						]
 					},
@@ -141,7 +141,7 @@
 							"linearizedBaseContracts": [
 								13
 							],
-							"name": "ITTNEXCallee",
+							"name": "IBridgeswapCallee",
 							"nodeType": "ContractDefinition",
 							"nodes": [
 								{
@@ -150,7 +150,7 @@
 									"implemented": false,
 									"kind": "function",
 									"modifiers": [],
-									"name": "TTNEXCall",
+									"name": "bridgeswapCall",
 									"nodeType": "FunctionDefinition",
 									"parameters": {
 										"id": 10,

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface ITTNEXPair {
+interface IBridgeswapPair {
 
     function MINIMUM_LIQUIDITY() external pure returns (uint);
     function factory() external view returns (address);

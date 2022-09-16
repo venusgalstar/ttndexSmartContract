@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
+contract BridgeSwapToken is ERC20('BridgeSwap Token', 'BRIS'), Ownable {
     using SafeMath for uint256;
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
