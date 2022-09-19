@@ -9,7 +9,7 @@ import "./BridgeReferral.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "./BridgeSwap.sol";
+import "./TTNEX.sol";
 
 // MasterChef is the master of Bridge. He can make Bridge and he is a fair guy.
 //
