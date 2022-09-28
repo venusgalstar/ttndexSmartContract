@@ -574,11 +574,11 @@ interface IRandomNumberGenerator {
     function viewRandomResult() external view returns (uint32);
 }
 
-// File: contracts/interfaces/IBridgeSwapLottery.sol
+// File: contracts/interfaces/ITTNDEXLottery.sol
 
 pragma solidity ^0.8.4;
 
-interface IBridgeSwapLottery {
+interface ITTNDEXLottery {
     /**
      * @notice Buy tickets for the current lottery
      * @param _lotteryId: lotteryId
@@ -608,7 +608,7 @@ interface IBridgeSwapLottery {
     function closeLottery(uint256 _lotteryId) external;
 
     /**
-     * @notice Draw the final number, calculate reward in CAKE per group, and make lottery claimable
+     * @notice Draw the final number, calculate reward in TTNP per group, and make lottery claimable
      * @param _lotteryId: lottery id
      * @param _autoInjection: reinjects funds into next lottery (vs. withdrawing all)
      * @dev Callable by operator
@@ -618,7 +618,7 @@ interface IBridgeSwapLottery {
     /**
      * @notice Inject funds
      * @param _lotteryId: lottery id
-     * @param _amount: amount to inject in CAKE token
+     * @param _amount: amount to inject in TTNP token
      * @dev Callable by operator
      */
     function injectFunds(uint256 _lotteryId, uint256 _amount) external;
@@ -627,14 +627,14 @@ interface IBridgeSwapLottery {
      * @notice Start the lottery
      * @dev Callable by operator
      * @param _endTime: endTime of the lottery
-     * @param _priceTicketInBris: price of a ticket in CAKE
+     * @param _priceTicketInTTNP: price of a ticket in TTNP
      * @param _discountDivisor: the divisor to calculate the discount magnitude for bulks
      * @param _rewardsBreakdown: breakdown of rewards per bracket (must sum to 10,000)
      * @param _treasuryFee: treasury fee (10,000 = 100%, 100 = 1%)
      */
     function startLottery(
         uint256 _endTime,
-        uint256 _priceTicketInBris,
+        uint256 _priceTicketInTTNP,
         uint256 _discountDivisor,
         uint256[6] calldata _rewardsBreakdown,
         uint256 _treasuryFee
@@ -646,16 +646,16 @@ interface IBridgeSwapLottery {
     function viewCurrentLotteryId() external returns (uint256);
 }
 
-// File: contracts/BridgeSwapLottery.sol
+// File: contracts/TTNDEXLottery.sol
 
 pragma solidity ^0.8.4;
 pragma abicoder v2;
 
-/** @title BridgeSwap Lottery.
+/** @title TTNDEX Lottery.
  * @notice It is a contract for a lottery system using
  * randomness provided externally.
  */
-contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
+contract TTNDEXLottery is ReentrancyGuard, ITTNDEXLottery, Ownable {
     using SafeERC20 for IERC20;
 
     address public injectorAddress;
@@ -667,8 +667,8 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
 
     uint256 public maxNumberTicketsPerBuyOrClaim = 100;
 
-    uint256 public maxPriceTicketInBris = 50 ether;
-    uint256 public minPriceTicketInBris = 0.005 ether;
+    uint256 public maxPriceTicketInTTNP = 50 ether;
+    uint256 public minPriceTicketInTTNP = 0.005 ether;
 
     uint256 public pendingInjectionNextLottery;
 
@@ -677,7 +677,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     uint256 public constant MAX_LENGTH_LOTTERY = 4 days + 5 minutes; // 4 days
     uint256 public constant MAX_TREASURY_FEE = 3000; // 30%
 
-    IERC20 public brisToken;
+    IERC20 public ttnpToken;
     IRandomNumberGenerator public randomGenerator;
 
     enum Status {
@@ -691,15 +691,15 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         Status status;
         uint256 startTime;
         uint256 endTime;
-        uint256 priceTicketInBris;
+        uint256 priceTicketInTTNP;
         uint256 discountDivisor;
         uint256[6] rewardsBreakdown; // 0: 1 matching number // 5: 6 matching numbers
         uint256 treasuryFee; // 500: 5% // 200: 2% // 50: 0.5%
-        uint256[6] brisPerBracket;
+        uint256[6] ttnpPerBracket;
         uint256[6] countWinnersPerBracket;
         uint256 firstTicketId;
         uint256 firstTicketIdNextLottery;
-        uint256 amountCollectedInBris;
+        uint256 amountCollectedInTTNP;
         uint32 finalNumber;
     }
 
@@ -744,7 +744,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         uint256 indexed lotteryId,
         uint256 startTime,
         uint256 endTime,
-        uint256 priceTicketInBris,
+        uint256 priceTicketInTTNP,
         uint256 firstTicketId,
         uint256 injectedAmount
     );
@@ -757,11 +757,11 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     /**
      * @notice Constructor
      * @dev RandomNumberGenerator must be deployed prior to this contract
-     * @param _brisTokenAddress: address of the CAKE token
+     * @param _ttnpTokenAddress: address of the TTNP token
      * @param _randomGeneratorAddress: address of the RandomGenerator contract used to work with ChainLink VRF
      */
-    constructor(address _brisTokenAddress, address _randomGeneratorAddress) {
-        brisToken = IERC20(_brisTokenAddress);
+    constructor(address _ttnpTokenAddress, address _randomGeneratorAddress) {
+        ttnpToken = IERC20(_ttnpTokenAddress);
         randomGenerator = IRandomNumberGenerator(_randomGeneratorAddress);
 
         // Initializes a mapping
@@ -791,18 +791,18 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         require(_lotteries[_lotteryId].status == Status.Open, "Lottery is not open");
         require(block.timestamp < _lotteries[_lotteryId].endTime, "Lottery is over");
 
-        // Calculate number of CAKE to this contract
-        uint256 amountBrisToTransfer = _calculateTotalPriceForBulkTickets(
+        // Calculate number of TTNP to this contract
+        uint256 amountTTNPToTransfer = _calculateTotalPriceForBulkTickets(
             _lotteries[_lotteryId].discountDivisor,
-            _lotteries[_lotteryId].priceTicketInBris,
+            _lotteries[_lotteryId].priceTicketInTTNP,
             _ticketNumbers.length
         );
 
-        // Transfer bris tokens to this contract
-        brisToken.safeTransferFrom(address(msg.sender), address(this), amountBrisToTransfer);
+        // Transfer ttnp tokens to this contract
+        ttnpToken.safeTransferFrom(address(msg.sender), address(this), amountTTNPToTransfer);
 
         // Increment the total amount collected for the lottery round
-        _lotteries[_lotteryId].amountCollectedInBris += amountBrisToTransfer;
+        _lotteries[_lotteryId].amountCollectedInTTNP += amountTTNPToTransfer;
 
         for (uint256 i = 0; i < _ticketNumbers.length; i++) {
             uint32 thisTicketNumber = _ticketNumbers[i];
@@ -844,8 +844,8 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         require(_ticketIds.length <= maxNumberTicketsPerBuyOrClaim, "Too many tickets");
         require(_lotteries[_lotteryId].status == Status.Claimable, "Lottery not claimable");
 
-        // Initializes the rewardInBrisToTransfer
-        uint256 rewardInBrisToTransfer;
+        // Initializes the rewardInTTNPToTransfer
+        uint256 rewardInTTNPToTransfer;
 
         for (uint256 i = 0; i < _ticketIds.length; i++) {
             require(_brackets[i] < 6, "Bracket out of range"); // Must be between 0 and 5
@@ -872,13 +872,13 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
             }
 
             // Increment the reward to transfer
-            rewardInBrisToTransfer += rewardForTicketId;
+            rewardInTTNPToTransfer += rewardForTicketId;
         }
 
         // Transfer money to msg.sender
-        brisToken.safeTransfer(msg.sender, rewardInBrisToTransfer);
+        ttnpToken.safeTransfer(msg.sender, rewardInTTNPToTransfer);
 
-        emit TicketsClaim(msg.sender, rewardInBrisToTransfer, _lotteryId, _ticketIds.length);
+        emit TicketsClaim(msg.sender, rewardInTTNPToTransfer, _lotteryId, _ticketIds.length);
     }
 
     /**
@@ -900,7 +900,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     }
 
     /**
-     * @notice Draw the final number, calculate reward in CAKE per group, and make lottery claimable
+     * @notice Draw the final number, calculate reward in TTNP per group, and make lottery claimable
      * @param _lotteryId: lottery id
      * @param _autoInjection: reinjects funds into next lottery (vs. withdrawing all)
      * @dev Callable by operator
@@ -922,13 +922,13 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
 
         // Calculate the amount to share post-treasury fee
         uint256 amountToShareToWinners = (
-            ((_lotteries[_lotteryId].amountCollectedInBris) * (10000 - _lotteries[_lotteryId].treasuryFee))
+            ((_lotteries[_lotteryId].amountCollectedInTTNP) * (10000 - _lotteries[_lotteryId].treasuryFee))
         ) / 10000;
 
         // Initializes the amount to withdraw to treasury
         uint256 amountToWithdrawToTreasury;
 
-        // Calculate prizes in CAKE for each bracket by starting from the highest one
+        // Calculate prizes in TTNP for each bracket by starting from the highest one
         for (uint32 i = 0; i < 6; i++) {
             uint32 j = 5 - i;
             uint32 transformedWinningNumber = _bracketCalculator[j] + (finalNumber % (uint32(10)**(j + 1)));
@@ -944,7 +944,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
             ) {
                 // B. If rewards at this bracket are > 0, calculate, else, report the numberAddresses from previous bracket
                 if (_lotteries[_lotteryId].rewardsBreakdown[j] != 0) {
-                    _lotteries[_lotteryId].brisPerBracket[j] =
+                    _lotteries[_lotteryId].ttnpPerBracket[j] =
                         ((_lotteries[_lotteryId].rewardsBreakdown[j] * amountToShareToWinners) /
                             (_numberTicketsPerLotteryId[_lotteryId][transformedWinningNumber] -
                                 numberAddressesInPreviousBracket)) /
@@ -953,9 +953,9 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
                     // Update numberAddressesInPreviousBracket
                     numberAddressesInPreviousBracket = _numberTicketsPerLotteryId[_lotteryId][transformedWinningNumber];
                 }
-                // A. No CAKE to distribute, they are added to the amount to withdraw to treasury address
+                // A. No TTNP to distribute, they are added to the amount to withdraw to treasury address
             } else {
-                _lotteries[_lotteryId].brisPerBracket[j] = 0;
+                _lotteries[_lotteryId].ttnpPerBracket[j] = 0;
 
                 amountToWithdrawToTreasury +=
                     (_lotteries[_lotteryId].rewardsBreakdown[j] * amountToShareToWinners) /
@@ -972,10 +972,10 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
             amountToWithdrawToTreasury = 0;
         }
 
-        amountToWithdrawToTreasury += (_lotteries[_lotteryId].amountCollectedInBris - amountToShareToWinners);
+        amountToWithdrawToTreasury += (_lotteries[_lotteryId].amountCollectedInTTNP - amountToShareToWinners);
 
-        // Transfer CAKE to treasury address
-        brisToken.safeTransfer(treasuryAddress, amountToWithdrawToTreasury);
+        // Transfer TTNP to treasury address
+        ttnpToken.safeTransfer(treasuryAddress, amountToWithdrawToTreasury);
 
         emit LotteryNumberDrawn(currentLotteryId, finalNumber, numberAddressesInPreviousBracket);
     }
@@ -1006,14 +1006,14 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     /**
      * @notice Inject funds
      * @param _lotteryId: lottery id
-     * @param _amount: amount to inject in CAKE token
+     * @param _amount: amount to inject in TTNP token
      * @dev Callable by owner or injector address
      */
     function injectFunds(uint256 _lotteryId, uint256 _amount) external override onlyOwnerOrInjector {
         require(_lotteries[_lotteryId].status == Status.Open, "Lottery not open");
 
-        brisToken.safeTransferFrom(address(msg.sender), address(this), _amount);
-        _lotteries[_lotteryId].amountCollectedInBris += _amount;
+        ttnpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
+        _lotteries[_lotteryId].amountCollectedInTTNP += _amount;
 
         emit LotteryInjection(_lotteryId, _amount);
     }
@@ -1022,14 +1022,14 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
      * @notice Start the lottery
      * @dev Callable by operator
      * @param _endTime: endTime of the lottery
-     * @param _priceTicketInBris: price of a ticket in CAKE
+     * @param _priceTicketInTTNP: price of a ticket in TTNP
      * @param _discountDivisor: the divisor to calculate the discount magnitude for bulks
      * @param _rewardsBreakdown: breakdown of rewards per bracket (must sum to 10,000)
      * @param _treasuryFee: treasury fee (10,000 = 100%, 100 = 1%)
      */
     function startLottery(
         uint256 _endTime,
-        uint256 _priceTicketInBris,
+        uint256 _priceTicketInTTNP,
         uint256 _discountDivisor,
         uint256[6] calldata _rewardsBreakdown,
         uint256 _treasuryFee
@@ -1045,7 +1045,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         );
 
         require(
-            (_priceTicketInBris >= minPriceTicketInBris) && (_priceTicketInBris <= maxPriceTicketInBris),
+            (_priceTicketInTTNP >= minPriceTicketInTTNP) && (_priceTicketInTTNP <= maxPriceTicketInTTNP),
             "Outside of limits"
         );
 
@@ -1068,15 +1068,15 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
             status: Status.Open,
             startTime: block.timestamp,
             endTime: _endTime,
-            priceTicketInBris: _priceTicketInBris,
+            priceTicketInTTNP: _priceTicketInTTNP,
             discountDivisor: _discountDivisor,
             rewardsBreakdown: _rewardsBreakdown,
             treasuryFee: _treasuryFee,
-            brisPerBracket: [uint256(0), uint256(0), uint256(0), uint256(0), uint256(0), uint256(0)],
+            ttnpPerBracket: [uint256(0), uint256(0), uint256(0), uint256(0), uint256(0), uint256(0)],
             countWinnersPerBracket: [uint256(0), uint256(0), uint256(0), uint256(0), uint256(0), uint256(0)],
             firstTicketId: currentTicketId,
             firstTicketIdNextLottery: currentTicketId,
-            amountCollectedInBris: pendingInjectionNextLottery,
+            amountCollectedInTTNP: pendingInjectionNextLottery,
             finalNumber: 0
         });
 
@@ -1084,7 +1084,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
             currentLotteryId,
             block.timestamp,
             _endTime,
-            _priceTicketInBris,
+            _priceTicketInTTNP,
             currentTicketId,
             pendingInjectionNextLottery
         );
@@ -1099,7 +1099,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
      * @dev Only callable by owner.
      */
     function recoverWrongTokens(address _tokenAddress, uint256 _tokenAmount) external onlyOwner {
-        require(_tokenAddress != address(brisToken), "Cannot be CAKE token");
+        require(_tokenAddress != address(ttnpToken), "Cannot be TTNP token");
 
         IERC20(_tokenAddress).safeTransfer(address(msg.sender), _tokenAmount);
 
@@ -1107,19 +1107,19 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     }
 
     /**
-     * @notice Set CAKE price ticket upper/lower limit
+     * @notice Set TTNP price ticket upper/lower limit
      * @dev Only callable by owner
-     * @param _minPriceTicketInBris: minimum price of a ticket in CAKE
-     * @param _maxPriceTicketInBris: maximum price of a ticket in CAKE
+     * @param _minPriceTicketInTTNP: minimum price of a ticket in TTNP
+     * @param _maxPriceTicketInTTNP: maximum price of a ticket in TTNP
      */
-    function setMinAndMaxTicketPriceInBris(uint256 _minPriceTicketInBris, uint256 _maxPriceTicketInBris)
+    function setMinAndMaxTicketPriceInTTNP(uint256 _minPriceTicketInTTNP, uint256 _maxPriceTicketInTTNP)
         external
         onlyOwner
     {
-        require(_minPriceTicketInBris <= _maxPriceTicketInBris, "minPrice must be < maxPrice");
+        require(_minPriceTicketInTTNP <= _maxPriceTicketInTTNP, "minPrice must be < maxPrice");
 
-        minPriceTicketInBris = _minPriceTicketInBris;
-        maxPriceTicketInBris = _maxPriceTicketInBris;
+        minPriceTicketInTTNP = _minPriceTicketInTTNP;
+        maxPriceTicketInTTNP = _maxPriceTicketInTTNP;
     }
 
     /**
@@ -1157,7 +1157,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
     /**
      * @notice Calculate price of a set of tickets
      * @param _discountDivisor: divisor for the discount
-     * @param _priceTicket price of a ticket (in CAKE)
+     * @param _priceTicket price of a ticket (in TTNP)
      * @param _numberTickets number of tickets to buy
      */
     function calculateTotalPriceForBulkTickets(
@@ -1313,7 +1313,7 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
 
         // Confirm that the two transformed numbers are the same, if not throw
         if (transformedWinningNumber == transformedUserNumber) {
-            return _lotteries[_lotteryId].brisPerBracket[_bracket];
+            return _lotteries[_lotteryId].ttnpPerBracket[_bracket];
         } else {
             return 0;
         }
@@ -1331,6 +1331,10 @@ contract BridgeSwapLottery is ReentrancyGuard, IBridgeSwapLottery, Ownable {
         uint256 _numberTickets
     ) internal pure returns (uint256) {
         return (_priceTicket * _numberTickets * (_discountDivisor + 1 - _numberTickets)) / _discountDivisor;
+    }
+
+    function getUserTickets(address _user, uint256 _lotteryId) external view returns(uint[] memory){
+        return _userTicketIdsPerLotteryId[_user][_lotteryId];
     }
 
     /**
