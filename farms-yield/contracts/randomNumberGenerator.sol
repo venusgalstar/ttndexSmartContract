@@ -780,11 +780,11 @@ interface IRandomNumberGenerator {
     function viewRandomResult() external view returns (uint32);
 }
 
-// File: contracts/interfaces/IBridgeSwapLottery.sol
+// File: contracts/interfaces/ITTNDEXLottery.sol
 
 pragma solidity ^0.8.4;
 
-interface IBridgeSwapLottery {
+interface ITTNDEXLottery {
     /**
      * @notice Buy tickets for the current lottery
      * @param _lotteryId: lotteryId
@@ -859,7 +859,7 @@ pragma solidity ^0.8.4;
 contract RandomNumberGenerator is VRFConsumerBase, IRandomNumberGenerator, Ownable {
     using SafeERC20 for IERC20;
 
-    address public bridgeSwapLottery;
+    address public ttnDexLottery;
     bytes32 public keyHash;
     bytes32 public latestRequestId;
     uint32 public randomResult;
@@ -880,10 +880,10 @@ contract RandomNumberGenerator is VRFConsumerBase, IRandomNumberGenerator, Ownab
 
     /**
      * @notice Request randomness from a user-provided seed
-     * @param _seed: seed provided by the BridgeSwap lottery
+     * @param _seed: seed provided by the TTNDEX lottery
      */
     function getRandomNumber(uint256 _seed) external override {
-        require(msg.sender == bridgeSwapLottery, "Only BridgeSwapLottery");
+        require(msg.sender == ttnDexLottery, "Only TTNDEXLottery");
         require(keyHash != bytes32(0), "Must have valid key hash");
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK tokens");
 
@@ -907,11 +907,11 @@ contract RandomNumberGenerator is VRFConsumerBase, IRandomNumberGenerator, Ownab
     }
 
     /**
-     * @notice Set the address for the BridgeSwapLottery
-     * @param _bridgeSwapLottery: address of the BridgeSwap lottery
+     * @notice Set the address for the TTNDEXLottery
+     * @param _ttnDexLottery: address of the TTNDEX lottery
      */
-    function setLotteryAddress(address _bridgeSwapLottery) external onlyOwner {
-        bridgeSwapLottery = _bridgeSwapLottery;
+    function setLotteryAddress(address _ttnDexLottery) external onlyOwner {
+        ttnDexLottery = _ttnDexLottery;
     }
 
     /**
@@ -944,6 +944,6 @@ contract RandomNumberGenerator is VRFConsumerBase, IRandomNumberGenerator, Ownab
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
         require(latestRequestId == requestId, "Wrong requestId");
         randomResult = uint32(1000000 + (randomness % 1000000));
-        latestLotteryId = IBridgeSwapLottery(bridgeSwapLottery).viewCurrentLotteryId();
+        latestLotteryId = ITTNDEXLottery(ttnDexLottery).viewCurrentLotteryId();
     }
-} 
+}
