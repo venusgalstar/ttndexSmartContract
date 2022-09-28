@@ -2,7 +2,7 @@
 
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /*
  * @dev Provides information about the current execution context, including the
@@ -27,7 +27,7 @@ abstract contract Context {
 
 // File: @openzeppelin/contracts/access/Ownable.sol
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @dev Contract module which provides a basic access control mechanism, where
@@ -95,7 +95,7 @@ abstract contract Ownable is Context {
 
 // File: @openzeppelin/contracts/security/ReentrancyGuard.sol
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @dev Contract module that helps prevent reentrant calls to a function.
@@ -158,7 +158,7 @@ abstract contract ReentrancyGuard {
 
 // File: @openzeppelin/contracts/token/ERC20/IERC20.sol
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -240,7 +240,7 @@ interface IERC20 {
 
 // File: @openzeppelin/contracts/utils/Address.sol
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @dev Collection of functions related to the address type
@@ -457,7 +457,7 @@ library Address {
 
 // File: @openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 /**
  * @title SafeERC20
@@ -555,7 +555,7 @@ library SafeERC20 {
 
 // File: contracts/interfaces/IRandomNumberGenerator.sol
 
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 interface IRandomNumberGenerator {
     /**
@@ -576,7 +576,7 @@ interface IRandomNumberGenerator {
 
 // File: contracts/interfaces/ITTNDEXLottery.sol
 
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 
 interface ITTNDEXLottery {
     /**
@@ -648,7 +648,7 @@ interface ITTNDEXLottery {
 
 // File: contracts/TTNDEXLottery.sol
 
-pragma solidity ^0.8.4;
+pragma solidity 0.8.4;
 pragma abicoder v2;
 
 /** @title TTNDEX Lottery.
