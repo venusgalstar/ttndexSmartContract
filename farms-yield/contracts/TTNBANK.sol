@@ -32,7 +32,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     uint256 public epochNumber; // increase one by one per epoch
 
     mapping(uint256 => uint256) public apy; // epochNumber => apy, apyValue = (apy / DENOMINATOR * 100) %
-    mapping(uint256 => uint256) public totalAmount; // epochNumber => totalStakedAmount
 
     mapping(address => mapping(uint256 => uint256)) public amount; // staker => (epochNumber => stakedAmount)
     mapping(address => uint256) public lastClaimEpochNumber; // staker => lastClaimEpochNumber
@@ -184,12 +183,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 _amount;
         }
 
-        if (totalAmount[epochNumber + 1] > 0) {
-            totalAmount[epochNumber + 1] += _amount;
-        } else {
-            totalAmount[epochNumber + 1] = totalAmount[epochNumber] + _amount;
-        }
-
         if (
             referrals[msg.sender] == address(0) &&
             _referral != msg.sender &&
@@ -253,22 +246,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         lastActionEpochNumber[msg.sender] = epochNumber;
 
-        if (totalAmount[epochNumber + 1] > 0) {
-            require(
-                totalAmount[epochNumber + 1] >= _amount,
-                "withdraw: INSUFFICIENT_TOTAL_STAKED_NEXT_BALANCE"
-            );
-
-            totalAmount[epochNumber + 1] -= _amount;
-        } else {
-            require(
-                totalAmount[epochNumber] >= _amount,
-                "withdraw: INSUFFICIENT_TOTAL_STAKED_NEXT_BALANCE"
-            );
-
-            totalAmount[epochNumber + 1] = totalAmount[epochNumber] - _amount;
-        }
-
         emit LogWithdraw(
             msg.sender,
             epochNumber + 1,
@@ -294,9 +271,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < epochNumber;
             index++
         ) {
-            pendingReward +=
-                (amount[msg.sender][index] * apy[index]) /
-                totalAmount[index];
+            pendingReward += amount[msg.sender][index] * apy[index];
         }
 
         if (pendingReward > 0) {
@@ -356,9 +331,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < lastActionEpochNumber[user];
             index++
         ) {
-            pendingReward +=
-                (amount[user][index] * apy[index]) /
-                totalAmount[index];
+            pendingReward += amount[user][index] * apy[index];
         }
 
         uint256 newEpochNumber = epochLength +
@@ -377,10 +350,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                     ? apy[epochNumber + 1]
                     : apy[epochNumber]
             );
-            uint256 totalAmountValue = (totalAmount[index] > 0)
-                ? totalAmount[index]
-                : totalAmount[epochNumber];
-            pendingReward += (amountValue * apyValue) / totalAmountValue;
+            pendingReward += amountValue * apyValue;
         }
     }
 
@@ -391,7 +361,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 epochLength;
 
             uint256 apyValue = apy[epochNumber];
-            uint256 totalAmountValue = totalAmount[epochNumber];
 
             for (
                 uint256 index = epochNumber + 1;
@@ -399,9 +368,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 index++
             ) {
                 apy[index] = apy[index] > 0 ? apy[index] : apyValue;
-                totalAmount[index] = totalAmount[index] > 0
-                    ? totalAmount[index]
-                    : totalAmountValue;
             }
 
             epochNumber += increaseValue;
