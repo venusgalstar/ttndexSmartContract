@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.4;
 
-import "./IERC20.sol";
+import "./IERC20Metadata.sol";
 import "./Ownable.sol";
 import "./Pausable.sol";
 import "./ReentrancyGuard.sol";
@@ -27,7 +27,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     uint256 public immutable startTime;
     uint256 public immutable epochLength;
 
-    IERC20 public token;
+    IERC20Metadata public token;
 
     uint256 public epochNumber; // increase one by one per epoch
 
@@ -70,7 +70,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     );
 
     constructor(
-        IERC20 _token,
+        IERC20Metadata _token,
         uint256 _epochLength,
         uint256 _apy,
         address _treasury,
@@ -109,7 +109,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         _unpause();
     }
 
-    function setToken(IERC20 _token) public onlyOwner {
+    function setToken(IERC20Metadata _token) public onlyOwner {
         require(address(_token) != address(0), "setToken: ZERO_ADDRESS");
         require(address(_token) != address(token), "setToken: SAME_ADDRESS");
 

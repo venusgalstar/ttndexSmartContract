@@ -1,12 +1,10 @@
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./ERC20.sol";
+import "./Ownable.sol";
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.4;
 
-contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
-    using SafeMath for uint256;
+contract TTNDEXToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);
@@ -109,9 +107,9 @@ contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
         );
 
         address signatory = ecrecover(digest, v, r, s);
-        require(signatory != address(0), "BRIS::delegateBySig: invalid signature");
-        require(nonce == nonces[signatory]++, "BRIS::delegateBySig: invalid nonce");
-        require(block.timestamp <= expiry, "BRIS::delegateBySig: signature expired");
+        require(signatory != address(0), "TTNP::delegateBySig: invalid signature");
+        require(nonce == nonces[signatory]++, "TTNP::delegateBySig: invalid nonce");
+        require(block.timestamp <= expiry, "TTNP::delegateBySig: signature expired");
         return _delegate(signatory, delegatee);
     }
 
@@ -141,7 +139,7 @@ contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
         view
         returns (uint256)
     {
-        require(blockNumber < block.number, "BRIS::getPriorVotes: not yet determined");
+        require(blockNumber < block.number, "TTNP::getPriorVotes: not yet determined");
 
         uint32 nCheckpoints = numCheckpoints[account];
         if (nCheckpoints == 0) {
@@ -192,7 +190,7 @@ contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
                 // decrease old representative
                 uint32 srcRepNum = numCheckpoints[srcRep];
                 uint256 srcRepOld = srcRepNum > 0 ? checkpoints[srcRep][srcRepNum - 1].votes : 0;
-                uint256 srcRepNew = srcRepOld.sub(amount);
+                uint256 srcRepNew = srcRepOld - amount;
                 _writeCheckpoint(srcRep, srcRepNum, srcRepOld, srcRepNew);
             }
 
@@ -200,7 +198,7 @@ contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
                 // increase new representative
                 uint32 dstRepNum = numCheckpoints[dstRep];
                 uint256 dstRepOld = dstRepNum > 0 ? checkpoints[dstRep][dstRepNum - 1].votes : 0;
-                uint256 dstRepNew = dstRepOld.add(amount);
+                uint256 dstRepNew = dstRepOld + amount;
                 _writeCheckpoint(dstRep, dstRepNum, dstRepOld, dstRepNew);
             }
         }
@@ -214,7 +212,7 @@ contract BridgeSwapToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
     )
         internal
     {
-        uint32 blockNumber = safe32(block.number, "BRIS::_writeCheckpoint: block number exceeds 32 bits");
+        uint32 blockNumber = safe32(block.number, "TTNP::_writeCheckpoint: block number exceeds 32 bits");
 
         if (nCheckpoints > 0 && checkpoints[delegatee][nCheckpoints - 1].fromBlock == blockNumber) {
             checkpoints[delegatee][nCheckpoints - 1].votes = newVotes;

@@ -51,8 +51,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 harvestInterval;  // Harvest interval in seconds
     }
 
-    // The BRIS TOKEN!
-    BridgeSwapToken public bridge;
+    // The TTNP TOKEN!
+    TTNDEXToken public bridge;
     // Dev address.
     address public devAddress;
     // Deposit Fee address
@@ -96,7 +96,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
     event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
 
     constructor(
-        BridgeSwapToken _bridge,
+        TTNDEXToken _bridge,
         uint256 _startBlock,
         uint256 _bridgePerBlock
     ) {

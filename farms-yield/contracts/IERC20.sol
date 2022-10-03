@@ -86,6 +86,4 @@ interface IERC20 {
         address to,
         uint256 amount
     ) external returns (bool);
-
-    function decimals() external view returns (uint8);
 }
