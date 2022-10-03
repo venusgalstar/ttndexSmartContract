@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.4;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./BridgeReferral.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "/contracts/utils/math/SafeMath.sol";
+import "./IERC20.sol";
+import "./SafeERC20.sol";
+import "./TTNDEXReferral.sol";
+import "./Ownable.sol";
+import "./ReentrancyGuard.sol";
 
 import "./TTNEX.sol";
 
-// MasterChef is the master of Bridge. He can make Bridge and he is a fair guy.
+// MasterChef is the master of TTNP. He can make TTNP and he is a fair guy.
 //
 // Note that it's ownable and the owner wields tremendous power. The ownership
-// will be transferred to a governance smart contract once BRIDGE is sufficiently
+// will be transferred to a governance smart contract once TTNP is sufficiently
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
@@ -29,13 +29,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 rewardLockedUp;  // Reward locked up.
         uint256 nextHarvestUntil; // When can the user harvest again.
         //
-        // We do some fancy math here. Basically, any point in time, the amount of BRIDGEs
+        // We do some fancy math here. Basically, any point in time, the amount of TTNPs
         // entitled to a user but is pending to be distributed is:
         //
-        //   pending reward = (user.amount * pool.accBridgePerShare) - user.rewardDebt
+        //   pending reward = (user.amount * pool.accTTNPPerShare) - user.rewardDebt
         //
         // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accBridgePerShare` (and `lastRewardBlock`) gets updated.
+        //   1. The pool's `accTTNPPerShare` (and `lastRewardBlock`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
@@ -44,22 +44,22 @@ contract MasterChef is Ownable, ReentrancyGuard {
     // Info of each pool.
     struct PoolInfo {
         IERC20 lpToken;           // Address of LP token contract.
-        uint256 allocPoint;       // How many allocation points assigned to this pool. BRIDGEs to distribute per block.
-        uint256 lastRewardBlock;  // Last block number that BRIDGEs distribution occurs.
-        uint256 accBridgePerShare;   // Accumulated BRIDGEs per share, times 1e12. See below.
+        uint256 allocPoint;       // How many allocation points assigned to this pool. TTNPs to distribute per block.
+        uint256 lastRewardBlock;  // Last block number that TTNPs distribution occurs.
+        uint256 accTTNPPerShare;   // Accumulated TTNPs per share, times 1e12. See below.
         uint16 depositFeeBP;      // Deposit fee in basis points
         uint256 harvestInterval;  // Harvest interval in seconds
     }
 
     // The TTNP TOKEN!
-    TTNDEXToken public bridge;
+    TTNDEXToken public ttnp;
     // Dev address.
     address public devAddress;
     // Deposit Fee address
     address public feeAddress;
-    // BRIDGE tokens created per block.
-    uint256 public bridgePerBlock;
-    // Bonus muliplier for early bridge makers.
+    // TTNP tokens created per block.
+    uint256 public ttnpPerBlock;
+    // Bonus muliplier for early ttnp makers.
     uint256 public constant BONUS_MULTIPLIER = 1;
     // Max harvest interval: 14 days.
     uint256 public constant MAXIMUM_HARVEST_INTERVAL = 14 days;
@@ -72,20 +72,20 @@ contract MasterChef is Ownable, ReentrancyGuard {
     mapping(address => uint256) public claimableCommision;
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
-    // The block number when BRIDGE mining starts.
+    // The block number when TTNP mining starts.
     uint256 public startBlock;
     // Total locked up rewards
     uint256 public totalLockedUpRewards;
 
-    // Bridge referral contract address.
-    BridgeReferral public bridgeReferral;
+    // TTNDEX referral contract address.
+    TTNDEXReferral public ttndexReferral;
     // Referral commission rate in basis points.
     uint16 public referralCommissionRate = 1000;
     //Minimum commision withdraw amount
     uint256 public minWithdraw = 0.3 * 10**18;
     // Max referral commission rate: 20%.
     uint16 public constant MAXIMUM_REFERRAL_COMMISSION_RATE = 2000;
-    //Max min withdraw amount : 100 BRIs
+    //Max min withdraw amount : 100 TTNPs
     uint256 public constant MAX_MIN_AMOUNT = 100 * 10**18;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -96,17 +96,17 @@ contract MasterChef is Ownable, ReentrancyGuard {
     event RewardLockedUp(address indexed user, uint256 indexed pid, uint256 amountLockedUp);
 
     constructor(
-        TTNDEXToken _bridge,
+        TTNDEXToken _ttnp,
         uint256 _startBlock,
-        uint256 _bridgePerBlock
+        uint256 _ttnpPerBlock
     ) {
-        bridge = _bridge;
+        ttnp = _ttnp;
         startBlock = _startBlock;
-        bridgePerBlock = _bridgePerBlock;
+        ttnpPerBlock = _ttnpPerBlock;
 
-        bridgeReferral = new BridgeReferral();
-        bridgeReferral.updateOperator(address(this), true);
-        bridgeReferral.transferOwnership(msg.sender);
+        ttndexReferral = new TTNDEXReferral();
+        ttndexReferral.updateOperator(address(this), true);
+        ttndexReferral.transferOwnership(msg.sender);
 
         devAddress = msg.sender;
         feeAddress = msg.sender;
@@ -130,13 +130,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accBridgePerShare: 0,
+            accTTNPPerShare: 0,
             depositFeeBP: _depositFeeBP,
             harvestInterval: _harvestInterval
         }));
     }
 
-    // Update the given pool's BRIDGE allocation point and deposit fee. Can only be called by the owner.
+    // Update the given pool's TTNP allocation point and deposit fee. Can only be called by the owner.
     function set(uint256 _pid, uint256 _allocPoint, uint16 _depositFeeBP, uint256 _harvestInterval, bool _withUpdate) public onlyOwner {
         require(_depositFeeBP <= 10000, "set: invalid deposit fee basis points");
         require(_harvestInterval <= MAXIMUM_HARVEST_INTERVAL, "set: invalid harvest interval");
@@ -154,22 +154,22 @@ contract MasterChef is Ownable, ReentrancyGuard {
         return _to.sub(_from).mul(BONUS_MULTIPLIER);
     }
 
-    // View function to see pending BRIDGEs on frontend.
-    function pendingBridge(uint256 _pid, address _user) external view returns (uint256) {
+    // View function to see pending TTNPs on frontend.
+    function pendingTTNP(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accBridgePerShare = pool.accBridgePerShare;
+        uint256 accTTNPPerShare = pool.accTTNPPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 bridgeReward = multiplier.mul(bridgePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accBridgePerShare = accBridgePerShare.add(bridgeReward.mul(1e12).div(lpSupply));
+            uint256 ttnpReward = multiplier.mul(ttnpPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+            accTTNPPerShare = accTTNPPerShare.add(ttnpReward.mul(1e12).div(lpSupply));
         }
-        uint256 pending = user.amount.mul(accBridgePerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(accTTNPPerShare).div(1e12).sub(user.rewardDebt);
         return pending.add(user.rewardLockedUp);
     }
 
-    // View function to see if user can harvest BRIDGEs.
+    // View function to see if user can harvest TTNPs.
     function canHarvest(uint256 _pid, address _user) public view returns (bool) {
         UserInfo storage user = userInfo[_pid][_user];
         return block.timestamp >= user.nextHarvestUntil;
@@ -195,22 +195,22 @@ contract MasterChef is Ownable, ReentrancyGuard {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 bridgeReward = multiplier.mul(bridgePerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        bridge.mint(devAddress, bridgeReward.div(10));
-        bridge.mint(address(this), bridgeReward);
-        pool.accBridgePerShare = pool.accBridgePerShare.add(bridgeReward.mul(1e12).div(lpSupply));
+        uint256 ttnpReward = multiplier.mul(ttnpPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        ttnp.mint(devAddress, ttnpReward.div(10));
+        ttnp.mint(address(this), ttnpReward);
+        pool.accTTNPPerShare = pool.accTTNPPerShare.add(ttnpReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to MasterChef for BRIDGE allocation.
+    // Deposit LP tokens to MasterChef for TTNP allocation.
     function deposit(uint256 _pid, uint256 _amount, address _referrer) public nonReentrant {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
-        if (_amount > 0 && address(bridgeReferral) != address(0) && _referrer != address(0) && _referrer != msg.sender) {
-            bridgeReferral.recordReferral(msg.sender, _referrer);
+        if (_amount > 0 && address(ttndexReferral) != address(0) && _referrer != address(0) && _referrer != msg.sender) {
+            ttndexReferral.recordReferral(msg.sender, _referrer);
         }
-        payOrLockupPendingBridge(_pid);
+        payOrLockupPendingTTNP(_pid);
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             if (pool.depositFeeBP > 0) {
@@ -221,7 +221,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
                 user.amount = user.amount.add(_amount);
             }
         }
-        user.rewardDebt = user.amount.mul(pool.accBridgePerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accTTNPPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -231,12 +231,12 @@ contract MasterChef is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        payOrLockupPendingBridge(_pid);
+        payOrLockupPendingTTNP(_pid);
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accBridgePerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accTTNPPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -253,8 +253,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
         emit EmergencyWithdraw(msg.sender, _pid, amount);
     }
 
-    // Pay or lockup pending BRIDGEs.
-    function payOrLockupPendingBridge(uint256 _pid) internal {
+    // Pay or lockup pending TTNPs.
+    function payOrLockupPendingTTNP(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
 
@@ -262,7 +262,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
             user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
         }
 
-        uint256 pending = user.amount.mul(pool.accBridgePerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accTTNPPerShare).div(1e12).sub(user.rewardDebt);
         if (canHarvest(_pid, msg.sender)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
                 uint256 totalRewards = pending.add(user.rewardLockedUp);
@@ -273,7 +273,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
                 user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
 
                 // send rewards
-                safeBridgeTransfer(msg.sender, totalRewards);
+                safeTTNPTransfer(msg.sender, totalRewards);
                 payReferralCommission(msg.sender, totalRewards);
             }
         } else if (pending > 0) {
@@ -283,13 +283,13 @@ contract MasterChef is Ownable, ReentrancyGuard {
         }
     }
 
-    // Safe bridge transfer function, just in case if rounding error causes pool to not have enough BRIDGEs.
-    function safeBridgeTransfer(address _to, uint256 _amount) internal {
-        uint256 bridgeBal = bridge.balanceOf(address(this));
-        if (_amount > bridgeBal) {
-            bridge.transfer(_to, bridgeBal);
+    // Safe ttnp transfer function, just in case if rounding error causes pool to not have enough TTNPs.
+    function safeTTNPTransfer(address _to, uint256 _amount) internal {
+        uint256 ttnpBal = ttnp.balanceOf(address(this));
+        if (_amount > ttnpBal) {
+            ttnp.transfer(_to, ttnpBal);
         } else {
-            bridge.transfer(_to, _amount);
+            ttnp.transfer(_to, _amount);
         }
     }
 
@@ -307,10 +307,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
     }
 
     // Pancake has to add hidden dummy pools in order to alter the emission, here we make it simple and transparent to all.
-    function updateEmissionRate(uint256 _bridgePerBlock) public onlyOwner {
+    function updateEmissionRate(uint256 _ttnpPerBlock) public onlyOwner {
         massUpdatePools();
-        emit EmissionRateUpdated(msg.sender, bridgePerBlock, _bridgePerBlock);
-        bridgePerBlock = _bridgePerBlock;
+        emit EmissionRateUpdated(msg.sender, ttnpPerBlock, _ttnpPerBlock);
+        ttnpPerBlock = _ttnpPerBlock;
     }
 
     // Update referral commission rate by the owner
@@ -326,19 +326,19 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     // Pay referral commission to the referrer who referred this user.
     function payReferralCommission(address _user, uint256 _pending) internal {
-        if (address(bridgeReferral) != address(0) && referralCommissionRate > 0) {
-            address referrer = bridgeReferral.getReferrer(_user);
+        if (address(ttndexReferral) != address(0) && referralCommissionRate > 0) {
+            address referrer = ttndexReferral.getReferrer(_user);
             uint256 commissionAmount = _pending.mul(referralCommissionRate).div(10000);
 
             if (referrer != address(0) && commissionAmount > 0) {
                 claimableCommision[referrer] += commissionAmount;
 
                 if(claimableCommision[referrer] >= minWithdraw){
-                  bridge.mint(referrer, claimableCommision[referrer]);
+                  ttnp.mint(referrer, claimableCommision[referrer]);
                   claimableCommision[referrer] = 0;
                 }
                 
-                bridgeReferral.recordReferralCommission(referrer, commissionAmount);
+                ttndexReferral.recordReferralCommission(referrer, commissionAmount);
                 emit ReferralCommissionPaid(_user, referrer, commissionAmount);
             }
         }

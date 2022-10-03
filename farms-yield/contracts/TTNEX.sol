@@ -176,7 +176,7 @@ contract TTNDEXToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
         internal
     {
         address currentDelegate = _delegates[delegator];
-        uint256 delegatorBalance = balanceOf(delegator); // balance of underlying BRISs (not scaled);
+        uint256 delegatorBalance = balanceOf(delegator); // balance of underlying TTNPs (not scaled);
         _delegates[delegator] = delegatee;
 
         emit DelegateChanged(delegator, currentDelegate, delegatee);
