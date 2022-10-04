@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.4;
 
-import "./utils/IERC20Metadata.sol";
+import "./interfaces/IERC20Metadata.sol";
 import "./utils/Ownable.sol";
 import "./utils/Pausable.sol";
 import "./utils/ReentrancyGuard.sol";

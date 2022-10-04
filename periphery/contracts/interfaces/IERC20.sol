@@ -86,4 +86,9 @@ interface IERC20 {
         address to,
         uint256 amount
     ) external returns (bool);
+
+    /**
+     * @dev Returns the decimals places of the token.
+     */
+    function decimals() external view returns (uint8);
 }
