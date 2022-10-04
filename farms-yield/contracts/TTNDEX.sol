@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 import "./ERC20.sol";
 import "./Ownable.sol";
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.4;
 
-contract TTNDEXToken is ERC20('TTNEXSwap Token', 'TTNP'), Ownable {
+contract TTNDEXToken is ERC20('TTNDEX Token', 'TTNP'), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);

@@ -815,10 +815,10 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
     // Accrued token per share
     uint256 public accTokenPerShare;
 
-    // The block number when TTNEX mining ends.
+    // The block number when TTNDEX mining ends.
     uint256 public bonusEndBlock;
 
-    // The block number when TTNEX mining starts.
+    // The block number when TTNDEX mining starts.
     uint256 public startBlock;
 
     // The block number of the last pool update
@@ -827,7 +827,7 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
     // The pool limit (0 if none)
     uint256 public poolLimitPerUser;
 
-    // TTNEX tokens created per block.
+    // TTNDEX tokens created per block.
     uint256 public rewardPerBlock;
 
     // The precision factor
@@ -1071,9 +1071,9 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
         uint256 stakedTokenSupply = stakedToken.balanceOf(address(this));
         if (block.number > lastRewardBlock && stakedTokenSupply != 0) {
             uint256 multiplier = _getMultiplier(lastRewardBlock, block.number);
-            uint256 TTNEXReward = multiplier.mul(rewardPerBlock);
+            uint256 TTNDEXReward = multiplier.mul(rewardPerBlock);
             uint256 adjustedTokenPerShare =
-                accTokenPerShare.add(TTNEXReward.mul(PRECISION_FACTOR).div(stakedTokenSupply));
+                accTokenPerShare.add(TTNDEXReward.mul(PRECISION_FACTOR).div(stakedTokenSupply));
             return user.amount.mul(adjustedTokenPerShare).div(PRECISION_FACTOR).sub(user.rewardDebt);
         } else {
             return user.amount.mul(accTokenPerShare).div(PRECISION_FACTOR).sub(user.rewardDebt);
@@ -1096,8 +1096,8 @@ contract SmartChefInitializable is Ownable, ReentrancyGuard {
         }
 
         uint256 multiplier = _getMultiplier(lastRewardBlock, block.number);
-        uint256 TTNEXReward = multiplier.mul(rewardPerBlock);
-        accTokenPerShare = accTokenPerShare.add(TTNEXReward.mul(PRECISION_FACTOR).div(stakedTokenSupply));
+        uint256 TTNDEXReward = multiplier.mul(rewardPerBlock);
+        accTokenPerShare = accTokenPerShare.add(TTNDEXReward.mul(PRECISION_FACTOR).div(stakedTokenSupply));
         lastRewardBlock = block.number;
     }
 

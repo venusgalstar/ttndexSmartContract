@@ -8,7 +8,7 @@ import "./TTNDEXReferral.sol";
 import "./Ownable.sol";
 import "./ReentrancyGuard.sol";
 
-import "./TTNEX.sol";
+import "./TTNDEX.sol";
 
 // MasterChef is the master of TTNP. He can make TTNP and he is a fair guy.
 //

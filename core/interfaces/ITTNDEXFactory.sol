@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface ITTNEXFactory {
+interface ITTNDEXFactory {
 
     // event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
