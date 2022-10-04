@@ -2,12 +2,10 @@
 
 pragma solidity 0.8.4;
 
-import "./IERC20.sol";
-import "./SafeERC20.sol";
+import "./utils/SafeERC20.sol";
+import "./utils/Ownable.sol";
+import "./utils/ReentrancyGuard.sol";
 import "./TTNDEXReferral.sol";
-import "./Ownable.sol";
-import "./ReentrancyGuard.sol";
-
 import "./TTNDEX.sol";
 
 // MasterChef is the master of TTNP. He can make TTNP and he is a fair guy.

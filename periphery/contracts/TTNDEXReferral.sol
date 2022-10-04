@@ -2,9 +2,8 @@
 
 pragma solidity 0.8.4;
 
-import "./IERC20.sol";
-import "./SafeERC20.sol";
-import "./Ownable.sol";
+import "./utils/SafeERC20.sol";
+import "./utils/Ownable.sol";
 
 contract TTNDEXReferral is Ownable {
     using SafeERC20 for IERC20;

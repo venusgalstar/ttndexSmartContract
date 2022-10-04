@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.4;
 
-import "./ERC20.sol";
-import "./Ownable.sol";
+import "./utils/ERC20.sol";
+import "./utils/Ownable.sol";
 
 contract TTNDEXToken is ERC20('TTNDEX Token', 'TTNP'), Ownable {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).

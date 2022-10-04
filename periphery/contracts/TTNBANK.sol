@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.4;
 
-import "./IERC20Metadata.sol";
-import "./Ownable.sol";
-import "./Pausable.sol";
-import "./ReentrancyGuard.sol";
+import "./utils/IERC20Metadata.sol";
+import "./utils/Ownable.sol";
+import "./utils/Pausable.sol";
+import "./utils/ReentrancyGuard.sol";
 
 contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     uint256 public constant MIN_DEPOSIT_AMOUNT = 20; // Note: 20 * 10**decimals
