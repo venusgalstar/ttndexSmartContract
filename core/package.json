@@ -1,4 +1,5 @@
 {
+  "name": "ttndex-core",
   "dependencies": {
     "hardhat": "^2.11.2"
   },
