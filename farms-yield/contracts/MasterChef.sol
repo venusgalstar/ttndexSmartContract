@@ -164,7 +164,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
             accTTNPPerShare = accTTNPPerShare + (ttnpReward * 1e12 / lpSupply);
         }
         uint256 pending = user.amount * accTTNPPerShare / 1e12 - user.rewardDebt;
-        return pending + user.rewardLockedUp
+        return pending + user.rewardLockedUp;
     }
 
     // View function to see if user can harvest TTNPs.
