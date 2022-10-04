@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import './interfaces/ITTNDEXPair.sol';
 import './TTNDEXERC20.sol';
@@ -10,24 +10,24 @@ import './interfaces/IERC20.sol';
 import './interfaces/ITTNDEXFactory.sol';
 import './interfaces/ITTNDEXCallee.sol';
 
-contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
+contract TTNDEXPair is TTNDEXERC20 {
     using SafeMath  for uint;
     using UQ112x112 for uint224;
 
-    uint public override constant MINIMUM_LIQUIDITY = 10**3;
+    uint public constant MINIMUM_LIQUIDITY = 10**3;
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
 
-    address public override factory;
-    address public override token0;
-    address public override token1;
+    address public factory;
+    address public token0;
+    address public token1;
 
     uint112 private reserve0;           // uses single storage slot, accessible via getReserves
     uint112 private reserve1;           // uses single storage slot, accessible via getReserves
     uint32  private blockTimestampLast; // uses single storage slot, accessible via getReserves
 
-    uint public override price0CumulativeLast;
-    uint public override price1CumulativeLast;
-    uint public override kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
+    uint public price0CumulativeLast;
+    uint public price1CumulativeLast;
+    uint public kLast; // reserve0 * reserve1, as of immediately after the most recent liquidity event
 
     uint private unlocked = 1;
     modifier lock() {
@@ -37,7 +37,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
         unlocked = 1;
     }
 
-    function getReserves() public view override returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
+    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
         _blockTimestampLast = blockTimestampLast;
@@ -65,7 +65,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // called once by the factory at time of deployment
-    function initialize(address _token0, address _token1) external override {
+    function initialize(address _token0, address _token1) external {
         require(msg.sender == factory, 'TTNDEX: FORBIDDEN'); // sufficient check
         token0 = _token0;
         token1 = _token1;
@@ -109,7 +109,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to) external override lock returns (uint liquidity) {
+    function mint(address to) external lock returns (uint liquidity) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         uint balance0 = IERC20(token0).balanceOf(address(this));
         uint balance1 = IERC20(token1).balanceOf(address(this));
@@ -133,7 +133,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) external override lock returns (uint amount0, uint amount1) {
+    function burn(address to) external lock returns (uint amount0, uint amount1) {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
@@ -158,7 +158,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // this low-level function should be called from a contract which performs important safety checks
-    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external override lock {
+    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external lock {
         require(amount0Out > 0 || amount1Out > 0, 'TTNDEX: INSUFFICIENT_OUTPUT_AMOUNT');
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
         require(amount0Out < _reserve0 && amount1Out < _reserve1, 'TTNDEX: INSUFFICIENT_LIQUIDITY');
@@ -189,7 +189,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // force balances to match reserves
-    function skim(address to) external override lock {
+    function skim(address to) external lock {
         address _token0 = token0; // gas savings
         address _token1 = token1; // gas savings
         _safeTransfer(_token0, to, IERC20(_token0).balanceOf(address(this)).sub(reserve0));
@@ -197,7 +197,7 @@ contract TTNDEXPair is ITTNDEXPair, TTNDEXERC20 {
     }
 
     // force reserves to match balances
-    function sync() external override lock {
+    function sync() external lock {
         _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
 }

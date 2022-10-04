@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.4;
 
 import "./interfaces/ITTNDEXFactory.sol";
 import "./TTNDEXPair.sol";
@@ -13,8 +13,6 @@ contract TTNDEXFactory is ITTNDEXFactory {
 
     mapping(address => mapping(address => address)) public override getPair;
     address[] public override allPairs;
-
-    event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
