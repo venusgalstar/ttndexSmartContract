@@ -6,7 +6,7 @@ import "./utils/SafeERC20.sol";
 import "./utils/Ownable.sol";
 import "./utils/ReentrancyGuard.sol";
 import "./TTNDEXReferral.sol";
-import "./TTNDEX.sol";
+import "./TTNDEXToken.sol";
 
 // MasterChef is the master of TTNP. He can make TTNP and he is a fair guy.
 //
