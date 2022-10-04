@@ -22,7 +22,7 @@ library TTNDEXLibrary {
                 hex'ff',
                 factory,
                 keccak256(abi.encodePacked(token0, token1)),
-                hex'7cc7101682161797087ba068426f32f1cd3d2766090917ad5213c17b23f211f9' // init code hash
+                hex'b4dd55898cbca3d10d0d76285e22647acee19a7b999a1e2766803289f1e6c8ad' // init code hash
             )))));
     }
 
