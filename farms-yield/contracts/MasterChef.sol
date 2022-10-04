@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.4;
 
-import "/contracts/utils/math/SafeMath.sol";
 import "./IERC20.sol";
 import "./SafeERC20.sol";
 import "./TTNDEXReferral.sol";
@@ -19,7 +18,6 @@ import "./TTNEX.sol";
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
 contract MasterChef is Ownable, ReentrancyGuard {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // Info of each user.
@@ -125,7 +123,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
             massUpdatePools();
         }
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
-        totalAllocPoint = totalAllocPoint.add(_allocPoint);
+        totalAllocPoint = totalAllocPoint + _allocPoint;
         poolInfo.push(PoolInfo({
             lpToken: _lpToken,
             allocPoint: _allocPoint,
@@ -143,7 +141,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
         if (_withUpdate) {
             massUpdatePools();
         }
-        totalAllocPoint = totalAllocPoint.sub(poolInfo[_pid].allocPoint).add(_allocPoint);
+        totalAllocPoint = totalAllocPoint - poolInfo[_pid].allocPoint + _allocPoint;
         poolInfo[_pid].allocPoint = _allocPoint;
         poolInfo[_pid].depositFeeBP = _depositFeeBP;
         poolInfo[_pid].harvestInterval = _harvestInterval;
@@ -151,7 +149,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
 
     // Return reward multiplier over the given _from to _to block.
     function getMultiplier(uint256 _from, uint256 _to) public pure returns (uint256) {
-        return _to.sub(_from).mul(BONUS_MULTIPLIER);
+        return (_to - _from) * BONUS_MULTIPLIER;
     }
 
     // View function to see pending TTNPs on frontend.
@@ -162,11 +160,11 @@ contract MasterChef is Ownable, ReentrancyGuard {
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 ttnpReward = multiplier.mul(ttnpPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accTTNPPerShare = accTTNPPerShare.add(ttnpReward.mul(1e12).div(lpSupply));
+            uint256 ttnpReward = multiplier * ttnpPerBlock * pool.allocPoint / totalAllocPoint;
+            accTTNPPerShare = accTTNPPerShare + (ttnpReward * 1e12 / lpSupply);
         }
-        uint256 pending = user.amount.mul(accTTNPPerShare).div(1e12).sub(user.rewardDebt);
-        return pending.add(user.rewardLockedUp);
+        uint256 pending = user.amount * accTTNPPerShare / 1e12 - user.rewardDebt;
+        return pending + user.rewardLockedUp
     }
 
     // View function to see if user can harvest TTNPs.
@@ -195,10 +193,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 ttnpReward = multiplier.mul(ttnpPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        ttnp.mint(devAddress, ttnpReward.div(10));
+        uint256 ttnpReward = multiplier * ttnpPerBlock * pool.allocPoint / totalAllocPoint;
+        ttnp.mint(devAddress, ttnpReward / 10);
         ttnp.mint(address(this), ttnpReward);
-        pool.accTTNPPerShare = pool.accTTNPPerShare.add(ttnpReward.mul(1e12).div(lpSupply));
+        pool.accTTNPPerShare = pool.accTTNPPerShare + (ttnpReward * 1e12 / lpSupply);
         pool.lastRewardBlock = block.number;
     }
 
@@ -214,14 +212,14 @@ contract MasterChef is Ownable, ReentrancyGuard {
         if (_amount > 0) {
             pool.lpToken.safeTransferFrom(address(msg.sender), address(this), _amount);
             if (pool.depositFeeBP > 0) {
-                uint256 depositFee = _amount.mul(pool.depositFeeBP).div(10000);
+                uint256 depositFee = _amount * pool.depositFeeBP / 10000;
                 pool.lpToken.safeTransfer(feeAddress, depositFee);
-                user.amount = user.amount.add(_amount).sub(depositFee);
+                user.amount = user.amount + _amount - depositFee;
             } else {
-                user.amount = user.amount.add(_amount);
+                user.amount = user.amount + _amount;
             }
         }
-        user.rewardDebt = user.amount.mul(pool.accTTNPPerShare).div(1e12);
+        user.rewardDebt = user.amount * pool.accTTNPPerShare / 1e12;
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -233,10 +231,10 @@ contract MasterChef is Ownable, ReentrancyGuard {
         updatePool(_pid);
         payOrLockupPendingTTNP(_pid);
         if (_amount > 0) {
-            user.amount = user.amount.sub(_amount);
+            user.amount = user.amount - _amount;
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accTTNPPerShare).div(1e12);
+        user.rewardDebt = user.amount * pool.accTTNPPerShare / 1e12;
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -259,26 +257,26 @@ contract MasterChef is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[_pid][msg.sender];
 
         if (user.nextHarvestUntil == 0) {
-            user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+            user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
         }
 
-        uint256 pending = user.amount.mul(pool.accTTNPPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount * pool.accTTNPPerShare / 1e12 - user.rewardDebt;
         if (canHarvest(_pid, msg.sender)) {
             if (pending > 0 || user.rewardLockedUp > 0) {
-                uint256 totalRewards = pending.add(user.rewardLockedUp);
+                uint256 totalRewards = pending + user.rewardLockedUp;
 
                 // reset lockup
-                totalLockedUpRewards = totalLockedUpRewards.sub(user.rewardLockedUp);
+                totalLockedUpRewards = totalLockedUpRewards - user.rewardLockedUp;
                 user.rewardLockedUp = 0;
-                user.nextHarvestUntil = block.timestamp.add(pool.harvestInterval);
+                user.nextHarvestUntil = block.timestamp + pool.harvestInterval;
 
                 // send rewards
                 safeTTNPTransfer(msg.sender, totalRewards);
                 payReferralCommission(msg.sender, totalRewards);
             }
         } else if (pending > 0) {
-            user.rewardLockedUp = user.rewardLockedUp.add(pending);
-            totalLockedUpRewards = totalLockedUpRewards.add(pending);
+            user.rewardLockedUp = user.rewardLockedUp + pending;
+            totalLockedUpRewards = totalLockedUpRewards + pending;
             emit RewardLockedUp(msg.sender, _pid, pending);
         }
     }
@@ -328,7 +326,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
     function payReferralCommission(address _user, uint256 _pending) internal {
         if (address(ttndexReferral) != address(0) && referralCommissionRate > 0) {
             address referrer = ttndexReferral.getReferrer(_user);
-            uint256 commissionAmount = _pending.mul(referralCommissionRate).div(10000);
+            uint256 commissionAmount = _pending * referralCommissionRate / 10000;
 
             if (referrer != address(0) && commissionAmount > 0) {
                 claimableCommision[referrer] += commissionAmount;
