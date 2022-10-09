@@ -12,7 +12,7 @@
   "author": "Grim",
   "license": "ISC",
   "dependencies": {
-    "@chainlink/contracts": "^0.3.0",
+    "@chainlink/contracts": "^0.3.1",
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/test-helpers": "^0.5.15",
     "@openzeppelin/truffle-upgrades": "^1.11.0",
