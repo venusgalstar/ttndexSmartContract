@@ -4,9 +4,9 @@ pragma solidity 0.8.4;
 
 interface IRandomNumberGenerator {
     /**
-     * Requests randomness from a user-provided seed
+     * Requests randomness
      */
-    function getRandomNumber(uint256 _seed) external;
+    function getRandomNumber() external;
 
     /**
      * View latest lotteryId numbers
