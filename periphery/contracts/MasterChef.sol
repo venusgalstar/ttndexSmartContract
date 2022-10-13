@@ -64,8 +64,6 @@ contract MasterChef is Ownable, ReentrancyGuard {
     PoolInfo[] public poolInfo;
     // Info of each user that stakes LP tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
-    //Claimable amount of referral commision
-    mapping(address => uint256) public claimableCommision;
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
     // The block number when TTNP mining starts.
@@ -77,12 +75,8 @@ contract MasterChef is Ownable, ReentrancyGuard {
     TTNDEXReferral public ttndexReferral;
     // Referral commission rate in basis points.
     uint16 public referralCommissionRate = 1000;
-    //Minimum commision withdraw amount
-    uint256 public minWithdraw = 0.3 * 10**18;
     // Max referral commission rate: 20%.
     uint16 public constant MAXIMUM_REFERRAL_COMMISSION_RATE = 2000;
-    //Max min withdraw amount : 100 TTNPs
-    uint256 public constant MAX_MIN_AMOUNT = 100 * 10**18;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -100,7 +94,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
         startBlock = _startBlock;
         ttnpPerBlock = _ttnpPerBlock;
 
-        ttndexReferral = new TTNDEXReferral();
+        ttndexReferral = new TTNDEXReferral(address(_ttnp));
         ttndexReferral.updateOperator(address(this), true);
         ttndexReferral.transferOwnership(msg.sender);
 
@@ -315,11 +309,6 @@ contract MasterChef is Ownable, ReentrancyGuard {
         referralCommissionRate = _referralCommissionRate;
     }
 
-    function setMinCommisionWithdraw(uint256 _amount) external onlyOwner {
-      require(_amount <= MAX_MIN_AMOUNT, "Invalid amount");
-      minWithdraw = _amount;
-    }
-
     // Pay referral commission to the referrer who referred this user.
     function payReferralCommission(address _user, uint256 _pending) internal {
         if (address(ttndexReferral) != address(0) && referralCommissionRate > 0) {
@@ -327,13 +316,7 @@ contract MasterChef is Ownable, ReentrancyGuard {
             uint256 commissionAmount = _pending * referralCommissionRate / 10000;
 
             if (referrer != address(0) && commissionAmount > 0) {
-                claimableCommision[referrer] += commissionAmount;
-
-                if(claimableCommision[referrer] >= minWithdraw){
-                  ttnp.mint(referrer, claimableCommision[referrer]);
-                  claimableCommision[referrer] = 0;
-                }
-                
+                ttnp.mint(address(ttndexReferral), commissionAmount);
                 ttndexReferral.recordReferralCommission(referrer, commissionAmount);
                 emit ReferralCommissionPaid(_user, referrer, commissionAmount);
             }
