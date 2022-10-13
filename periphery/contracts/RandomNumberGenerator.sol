@@ -27,7 +27,7 @@ contract RandomNumberGenerator is
 
     // The default is 3, but you can set this higher.
     uint16 public requestConfirmations = 50;
-    uint256 public fee;
+    uint256 public maxFee = 2 * 10 ** 17; // 0.2 LINK
     address public ttnDexLottery;
 
     bool public latestRequestStatus;
@@ -63,6 +63,8 @@ contract RandomNumberGenerator is
             callbackGasLimit
         );
 
+        require(latestRequestPaidAmount <= maxFee, "Must less than maxFee");
+
         emit RequestSent(requestId, numWords);
         return requestId;
     }
@@ -73,7 +75,7 @@ contract RandomNumberGenerator is
     function getRandomNumber() external override {
         require(msg.sender == ttnDexLottery, "Only TTNDEXLottery");
         require(
-            LinkTokenInterface(linkAddress).balanceOf(address(this)) >= fee,
+            LinkTokenInterface(linkAddress).balanceOf(address(this)) >= maxFee,
             "Not enough LINK tokens"
         );
 
@@ -144,11 +146,11 @@ contract RandomNumberGenerator is
     }
 
     /**
-     * @notice Change the fee
-     * @param _fee: new fee (in LINK)
+     * @notice Change the maxFee
+     * @param _maxFee: new maxFee (in LINK)
      */
-    function setFee(uint256 _fee) external onlyOwner {
-        fee = _fee;
+    function setMaxFee(uint256 _maxFee) external onlyOwner {
+        maxFee = _maxFee;
     }
 
     /**
