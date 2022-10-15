@@ -78,6 +78,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     ) {
         setToken(_token);
         epochLength = _epochLength;
+        apy[0] = _apy;
         _setAPY(_apy);
         setTreasury(_treasury);
         setDevWallet(_devWallet);
