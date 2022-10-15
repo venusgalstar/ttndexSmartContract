@@ -52,7 +52,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed epochNumber,
         uint256 indexed stakedAmount
     );
-    event LogSetReferal(address indexed user, address indexed referral);
+    event LogSetReferral(address indexed user, address indexed referral);
     event LogWithdraw(
         address indexed staker,
         uint256 epochNumber,
@@ -64,7 +64,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed reward
     );
     event LogSetNewEpoch(uint256 indexed epochNumber);
-    event LogWithdrawReferal(
+    event LogWithdrawReferral(
         address indexed referral,
         uint256 indexed referralReward
     );
@@ -189,7 +189,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             _referral != address(0)
         ) {
             referrals[msg.sender] = _referral;
-            emit LogSetReferal(msg.sender, _referral);
+            emit LogSetReferral(msg.sender, _referral);
         }
 
         lastActionEpochNumber[msg.sender] = epochNumber;
@@ -376,18 +376,18 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function withdrawReferal() external whenNotPaused nonReentrant {
+    function withdrawReferral() external whenNotPaused nonReentrant {
         require(
             referralRewards[msg.sender] > 0,
-            "withdrawReferal: ZERO_AMOUNT"
+            "withdrawReferral: ZERO_AMOUNT"
         );
         require(
             token.transfer(msg.sender, referralRewards[msg.sender]),
-            "withdrawReferal: TRANSFER_FAIL"
+            "withdrawReferral: TRANSFER_FAIL"
         );
         referralTotalRewards[msg.sender] += referralRewards[msg.sender];
         referralRewards[msg.sender] = 0;
 
-        emit LogWithdrawReferal(msg.sender, referralRewards[msg.sender]);
+        emit LogWithdrawReferral(msg.sender, referralRewards[msg.sender]);
     }
 }
