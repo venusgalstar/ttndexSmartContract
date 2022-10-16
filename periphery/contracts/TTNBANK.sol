@@ -272,7 +272,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < epochNumber;
             index++
         ) {
-            pendingReward += amount[msg.sender][index] * apy[index];
+            pendingReward += amount[msg.sender][index] * apy[index] / DENOMINATOR;
         }
 
         if (pendingReward > 0) {
@@ -332,7 +332,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < lastActionEpochNumber[user];
             index++
         ) {
-            pendingReward += amount[user][index] * apy[index];
+            pendingReward += amount[user][index] * apy[index] / DENOMINATOR;
         }
 
         uint256 newEpochNumber = epochLength +
