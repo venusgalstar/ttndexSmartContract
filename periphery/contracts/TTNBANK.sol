@@ -50,13 +50,13 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     event LogDeposit(
         address indexed staker,
         uint256 indexed epochNumber,
-        uint256 indexed stakedAmount
+        uint256 indexed depositAmount
     );
     event LogSetReferral(address indexed user, address indexed referral);
     event LogWithdraw(
         address indexed staker,
         uint256 epochNumber,
-        uint256 indexed stakedAmount
+        uint256 indexed withdrawAmount
     );
     event LogWithdrawReward(
         address indexed user,
@@ -144,7 +144,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 depositFee = (_amount * DEPOSIT_FEE) / DENOMINATOR;
 
         require(
-            token.transferFrom(msg.sender, address(this), _amount - depositFee),
+            token.transferFrom(msg.sender, address(this), _amount),
             "deposit: TRANSFERFROM_FAIL"
         );
 
@@ -195,11 +195,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         lastActionEpochNumber[msg.sender] = epochNumber;
 
-        emit LogDeposit(
-            msg.sender,
-            epochNumber + 1,
-            amount[msg.sender][epochNumber + 1]
-        );
+        emit LogDeposit(msg.sender, epochNumber + 1, _amount);
     }
 
     function withdraw(uint256 _amount) external whenNotPaused nonReentrant {
@@ -209,22 +205,24 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
 
-        require(
-            token.transfer(msg.sender, _amount - withdrawFee),
-            "withdraw: TRANSFER_FAIL"
-        );
+        require(token.transfer(msg.sender, _amount), "withdraw: TRANSFER_FAIL");
 
         require(
-            token.transfer(
+            token.transferFrom(
+                msg.sender,
                 treasury,
                 (withdrawFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
             ),
-            "withdraw: TRANSFER_TO_TREASURY_FAIL"
+            "withdraw: TRANSFERFROM_TO_TREASURY_FAIL"
         );
 
         require(
-            token.transfer(devWallet, (withdrawFee * DEV_FEE) / DENOMINATOR),
-            "withdraw: TRANSFER_TO_DEV_FAIL"
+            token.transferFrom(
+                msg.sender,
+                devWallet,
+                (withdrawFee * DEV_FEE) / DENOMINATOR
+            ),
+            "withdraw: TRANSFERFROM_TO_DEV_FAIL"
         );
 
         if (epochNumber == lastActionEpochNumber[msg.sender]) {
@@ -247,11 +245,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         lastActionEpochNumber[msg.sender] = epochNumber;
 
-        emit LogWithdraw(
-            msg.sender,
-            epochNumber + 1,
-            amount[msg.sender][epochNumber + 1]
-        );
+        emit LogWithdraw(msg.sender, epochNumber + 1, _amount);
     }
 
     function _withdrawReward() internal returns (bool hasReward) {
@@ -272,46 +266,37 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < epochNumber;
             index++
         ) {
-            pendingReward += amount[msg.sender][index] * apy[index] / DENOMINATOR;
+            pendingReward +=
+                (amount[msg.sender][index] * apy[index]) /
+                DENOMINATOR;
         }
 
         if (pendingReward > 0) {
             hasReward = true;
-            uint256 withdrawRewardFee = (pendingReward * WITHDRAW_FEE) /
-                DENOMINATOR;
 
-            uint256 userReward = pendingReward - withdrawRewardFee;
-            uint256 referralReward = (userReward * REFERRAL_PERCENT) /
+            uint256 referralReward = (pendingReward * REFERRAL_PERCENT) /
                 DENOMINATOR;
 
             require(
-                token.transfer(msg.sender, userReward - referralReward),
-                "_withdrawReward: TRANSFER_FAIL"
+                token.transferFrom(
+                    treasury,
+                    msg.sender,
+                    pendingReward - referralReward
+                ),
+                "_withdrawReward: TRANSFERFROM_FAIL"
             );
 
             referralRewards[referrals[msg.sender]] += referralReward;
-
-            require(
-                token.transfer(
-                    treasury,
-                    (withdrawRewardFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
-                ),
-                "_withdrawReward: TRANSFER_TO_TREASURY_FAIL"
-            );
-
-            require(
-                token.transfer(
-                    devWallet,
-                    (withdrawRewardFee * DEV_FEE) / DENOMINATOR
-                ),
-                "_withdrawReward: TRANSFER_TO_DEV_FAIL"
-            );
 
             lastClaimEpochNumber[msg.sender] = epochNumber;
             lastRewards[msg.sender] = pendingReward;
             totalRewards[msg.sender] += pendingReward;
 
-            emit LogWithdrawReward(msg.sender, epochNumber, pendingReward);
+            emit LogWithdrawReward(
+                msg.sender,
+                epochNumber,
+                pendingReward - referralReward
+            );
         } else {
             hasReward = false;
         }
@@ -332,10 +317,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             index < lastActionEpochNumber[user];
             index++
         ) {
-            pendingReward += amount[user][index] * apy[index] / DENOMINATOR;
+            pendingReward += (amount[user][index] * apy[index]) / DENOMINATOR;
         }
 
-        uint256 newEpochNumber = epochLength +
+        uint256 newEpochNumber = epochNumber +
             (block.timestamp - startTime - epochLength * epochNumber) /
             epochLength;
         for (
@@ -383,12 +368,17 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             "withdrawReferral: ZERO_AMOUNT"
         );
         require(
-            token.transfer(msg.sender, referralRewards[msg.sender]),
+            token.transferFrom(
+                treasury,
+                msg.sender,
+                referralRewards[msg.sender]
+            ),
             "withdrawReferral: TRANSFER_FAIL"
         );
         referralTotalRewards[msg.sender] += referralRewards[msg.sender];
-        referralRewards[msg.sender] = 0;
 
         emit LogWithdrawReferral(msg.sender, referralRewards[msg.sender]);
+
+        referralRewards[msg.sender] = 0;
     }
 }
