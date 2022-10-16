@@ -251,7 +251,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     function _withdrawReward() internal returns (bool hasReward) {
         _setNewEpoch();
         for (
-            uint256 index = epochNumber;
+            uint256 index = epochNumber + 1;
             index > lastActionEpochNumber[msg.sender] + 1;
             index--
         ) {
@@ -336,8 +336,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                     ? apy[epochNumber + 1]
                     : apy[epochNumber]
             );
-            pendingReward += amountValue * apyValue;
+            pendingReward += amountValue * apyValue / DENOMINATOR;
         }
+
+        pendingReward = pendingReward * (DENOMINATOR - REFERRAL_PERCENT) / DENOMINATOR;
     }
 
     function _setNewEpoch() internal {
