@@ -279,12 +279,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             uint256 referralReward = (pendingReward * REFERRAL_PERCENT) /
                 DENOMINATOR;
 
+            pendingReward -= referralReward;
+
             require(
-                rewardToken.transferFrom(
-                    treasury,
-                    msg.sender,
-                    pendingReward - referralReward
-                ),
+                rewardToken.transferFrom(treasury, msg.sender, pendingReward),
                 "_withdrawReward: TRANSFERFROM_FAIL"
             );
 
@@ -294,11 +292,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             lastRewards[msg.sender] = pendingReward;
             totalRewards[msg.sender] += pendingReward;
 
-            emit LogWithdrawReward(
-                msg.sender,
-                epochNumber,
-                pendingReward - referralReward
-            );
+            emit LogWithdrawReward(msg.sender, epochNumber, pendingReward);
         } else {
             hasReward = false;
         }
@@ -341,9 +335,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             pendingReward += (amountValue * apyValue) / DENOMINATOR;
         }
 
-        pendingReward =
-            (pendingReward * (DENOMINATOR - REFERRAL_PERCENT)) /
-            DENOMINATOR;
+        pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
 
         pendingReward =
             (pendingReward / 10**stakedDecimals) *
