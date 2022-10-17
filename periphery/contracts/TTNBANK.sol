@@ -8,24 +8,27 @@ import "./utils/Pausable.sol";
 import "./utils/ReentrancyGuard.sol";
 
 contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
+    uint256 public constant CIRCULATING_FUNDS_PERCENT = 3000; // 30%
+
     uint256 public constant MIN_APY = 1; // for only test
     uint256 public constant MAX_APY = 10**6; // for only test
 
-    uint256 public constant REFERRAL_PERCENT = 1000;
-    uint256 public constant DEPOSIT_FEE = 100;
-    uint256 public constant WITHDRAW_FEE = 50;
-    uint256 public constant DEV_FEE = 1000;
+    uint256 public constant REFERRAL_PERCENT = 1000; // 10%
+    uint256 public constant DEPOSIT_FEE = 100; // 1%
+    uint256 public constant WITHDRAW_FEE = 50; // 0.5%
+    uint256 public constant DEV_FEE = 1000; // 10%
 
     uint256 public constant DENOMINATOR = 10000; // 1: 0.01%(0.0001), 100: 1%(0.01), 10000: 100%(1)
+
+    uint256 public immutable startTime;
+    uint256 public immutable epochLength;
 
     uint256 public MIN_DEPOSIT_AMOUNT = 20; // Note: 20 * 10**decimals
     uint256 public MAX_DEPOSIT_AMOUNT = 25000; // Note: 25000 * 10**decimals
 
+    address public bank;
     address public treasury;
     address public devWallet;
-
-    uint256 public immutable startTime;
-    uint256 public immutable epochLength;
 
     IERC20 public stakedToken;
     IERC20 public rewardToken;
@@ -49,6 +52,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
     event LogSetDevWallet(address indexed devWallet);
     event LogSetTreasury(address indexed treasury);
+    event LogSetBank(address indexed bank);
     event LogSetStakedToken(address indexed stakedToken, uint8 stakedDecimals);
     event LogSetRewardToken(address indexed rewardToken, uint8 rewardDecimals);
     event LogSetMinMaxDepositAmount(
@@ -77,6 +81,11 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         address indexed referral,
         uint256 indexed referralReward
     );
+    event LogInjectFunds(
+        uint256 indexed injectAmount,
+        uint256 indexed rewardAmount
+    );
+    event LogEjectFunds(uint256 indexed ejectAmount);
 
     constructor(
         IERC20 _stakedToken,
@@ -113,6 +122,15 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         emit LogSetTreasury(treasury);
     }
 
+    function setBank(address _bank) public onlyOwner {
+        require(_bank != address(0), "setBank: ZERO_ADDRESS");
+        require(_bank != bank, "setBank: SAME_ADDRESS");
+
+        bank = _bank;
+
+        emit LogSetBank(bank);
+    }
+
     function setPause() external onlyOwner {
         _pause();
     }
@@ -137,7 +155,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         external
         onlyOwner
     {
-        require(_minAmount <= _maxAmount, "setMinMaxDepositAmount: MIN_MAX_FAIL");
+        require(
+            _minAmount <= _maxAmount,
+            "setMinMaxDepositAmount: MIN_MAX_FAIL"
+        );
 
         MIN_DEPOSIT_AMOUNT = _minAmount;
         MAX_DEPOSIT_AMOUNT = _maxAmount;
@@ -422,5 +443,44 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         emit LogWithdrawReferral(msg.sender, referralRewards[msg.sender]);
 
         referralRewards[msg.sender] = 0;
+    }
+
+    /**
+     * @notice Inject funds and rewards to distribute to stakers.
+     */
+    function injectFunds(uint256 _injectAmount, uint256 _rewardAmount)
+        external
+        onlyOwner
+    {
+        require(
+            stakedToken.transferFrom(bank, address(this), _injectAmount),
+            "injectFunds: TRANSFERFROM_INJECT_FAIL"
+        );
+        require(
+            rewardToken.transferFrom(bank, treasury, _rewardAmount),
+            "injectFunds: TRANSFERFROM_REWARD_FAIL"
+        );
+
+        emit LogInjectFunds(_injectAmount, _rewardAmount);
+    }
+
+    /**
+     * @notice Eject funds to make profit for stakers.
+     */
+    function ejectFunds(uint256 _amount) external onlyOwner {
+        uint256 ejectEnabledAmount = (stakedToken.balanceOf(address(this)) *
+            (DENOMINATOR - CIRCULATING_FUNDS_PERCENT)) / DENOMINATOR;
+
+        require(
+            _amount <= ejectEnabledAmount,
+            "ejectFunds: OVERFLOW_EJECT_ENABLED_AMOUNT"
+        );
+
+        require(
+            stakedToken.transfer(bank, _amount),
+            "ejectFunds: TRANSFER_FAIL"
+        );
+
+        emit LogEjectFunds(_amount);
     }
 }
