@@ -316,9 +316,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             pendingReward += (amount[user][index] * apy[index]) / DENOMINATOR;
         }
 
-        uint256 newEpochNumber = epochNumber +
-            (block.timestamp - startTime - epochLength * epochNumber) /
-            epochLength;
+        uint256 newEpochNumber = (block.timestamp - startTime) / epochLength;
         for (
             uint256 index = lastActionEpochNumber[user];
             index < newEpochNumber;
@@ -343,22 +341,19 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _setNewEpoch() internal {
-        uint256 delta = block.timestamp - startTime;
-        if (delta >= epochLength * (epochNumber + 1)) {
-            uint256 increaseValue = (delta - epochLength * epochNumber) /
-                epochLength;
-
+        uint256 newEpochNumber = (block.timestamp - startTime) / epochLength;
+        if (newEpochNumber > epochNumber) {
             uint256 apyValue = apy[epochNumber];
 
             for (
                 uint256 index = epochNumber + 1;
-                index <= epochNumber + increaseValue + 1;
+                index <= newEpochNumber + 1;
                 index++
             ) {
                 apy[index] = apy[index] > 0 ? apy[index] : apyValue;
             }
 
-            epochNumber += increaseValue;
+            epochNumber = newEpochNumber;
 
             emit LogSetNewEpoch(epochNumber);
         }
