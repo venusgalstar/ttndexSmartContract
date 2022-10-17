@@ -37,6 +37,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     uint8 public rewardDecimals;
 
     uint256 public epochNumber; // increase one by one per epoch
+    uint256 public totalAmount; // total staked amount
 
     mapping(uint256 => uint256) public apy; // epochNumber => apy, apyValue = (apy / DENOMINATOR * 100) %
 
@@ -216,6 +217,8 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             "deposit: TRANSFERFROM_TO_DEV_FAIL"
         );
 
+        totalAmount += _amount;
+
         for (
             uint256 index = epochNumber;
             index > lastActionEpochNumber[msg.sender] + 1;
@@ -277,6 +280,8 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             ),
             "withdraw: TRANSFERFROM_TO_DEV_FAIL"
         );
+
+        totalAmount -= _amount;
 
         if (epochNumber == lastActionEpochNumber[msg.sender]) {
             require(
