@@ -90,6 +90,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     constructor(
         IERC20 _stakedToken,
         IERC20 _rewardToken,
+        address _bank,
         uint256 _epochLength,
         uint256 _apy,
         address _treasury,
@@ -97,6 +98,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     ) {
         setStakedToken(_stakedToken);
         setRewardToken(_rewardToken);
+        setBank(_bank);
         epochLength = _epochLength;
         apy[0] = _apy;
         _setAPY(_apy);
