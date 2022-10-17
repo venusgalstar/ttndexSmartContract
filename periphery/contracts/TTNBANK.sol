@@ -67,6 +67,11 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 indexed depositAmount
     );
     event LogSetReferral(address indexed user, address indexed referral);
+    event LogWithdraw(
+        address indexed staker,
+        uint256 epochNumber,
+        uint256 indexed withdrawAmount
+    );
     event LogWithdrawReward(
         address indexed user,
         uint256 indexed epochNumber,
@@ -244,6 +249,61 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         lastActionEpochNumber[msg.sender] = epochNumber;
 
         emit LogDeposit(msg.sender, epochNumber + 1, _amount);
+    }
+
+    function withdraw(uint256 _amount) external whenNotPaused nonReentrant {
+        require(_amount > 0, "withdraw: ZERO_WITHDRAW_AMOUNT");
+
+        _withdrawReward();
+
+        uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
+
+        require(
+            stakedToken.transfer(msg.sender, _amount),
+            "withdraw: TRANSFER_FAIL"
+        );
+
+        require(
+            stakedToken.transferFrom(
+                msg.sender,
+                treasury,
+                (withdrawFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
+            ),
+            "withdraw: TRANSFERFROM_TO_TREASURY_FAIL"
+        );
+
+        require(
+            stakedToken.transferFrom(
+                msg.sender,
+                devWallet,
+                (withdrawFee * DEV_FEE) / DENOMINATOR
+            ),
+            "withdraw: TRANSFERFROM_TO_DEV_FAIL"
+        );
+
+        totalAmount -= _amount;
+
+        if (epochNumber == lastActionEpochNumber[msg.sender]) {
+            require(
+                amount[msg.sender][epochNumber + 1] >= _amount,
+                "withdraw: INSUFFICIENT_STAKED_NEXT_BALANCE"
+            );
+
+            amount[msg.sender][epochNumber + 1] -= _amount;
+        } else {
+            require(
+                amount[msg.sender][epochNumber] >= _amount,
+                "withdraw: INSUFFICIENT_STAKED_BALANCE"
+            );
+
+            amount[msg.sender][epochNumber + 1] =
+                amount[msg.sender][epochNumber] -
+                _amount;
+        }
+
+        lastActionEpochNumber[msg.sender] = epochNumber;
+
+        emit LogWithdraw(msg.sender, epochNumber + 1, _amount);
     }
 
     function _withdrawReward() internal returns (bool hasReward) {
