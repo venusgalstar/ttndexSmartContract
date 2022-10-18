@@ -333,11 +333,11 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             pendingReward += (amountValue * apyValue) / DENOMINATOR;
         }
 
-        pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
-
         pendingReward =
             (pendingReward / 10**stakedDecimals) *
             10**rewardDecimals;
+
+        pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
     }
 
     function _setNewEpoch() internal {
