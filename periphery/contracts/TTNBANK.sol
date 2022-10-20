@@ -81,7 +81,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 _apy,
         address _treasury,
         address _devWallet,
-        address _startTime
+        uint256 _startTime
     ) {
         setStakedToken(_stakedToken);
         setBank(_bank);
@@ -256,6 +256,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                     (amount[msg.sender][index] * apy[index]) /
                     DENOMINATOR;
             }
+            pendingClaimEpochNumber[msg.sender] = epochNumber - 1;
         }
 
         if (pendingReward > 0) {
@@ -287,7 +288,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
             referralRewards[referrals[msg.sender]] += referralReward;
 
-            pendingClaimEpochNumber[msg.sender] = epochNumber - 1;
             lastRewards[msg.sender] = pendingReward;
             totalRewards[msg.sender] += pendingReward;
 
