@@ -222,10 +222,13 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             uint256 enableAmount = amount[msg.sender][
                 userInfo[msg.sender].requestEpochNumber - 1
             ];
+
             require(
-                _amount <= requestAmount && _amount <= enableAmount,
+                _amount <= enableAmount && _amount <= requestAmount,
                 "withdraw: INSUFFICIENT_REQUEST_AMOUNT"
             );
+
+            userInfo[msg.sender].requestAmount -= _amount;
 
             uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
 
