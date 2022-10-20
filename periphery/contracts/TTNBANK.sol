@@ -155,22 +155,26 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         totalAmount += _amount;
 
-        for (
-            uint256 index = epochNumber - 1;
-            index > lastActionEpochNumber[msg.sender];
-            index--
-        ) {
-            amount[msg.sender][index] = amount[msg.sender][
-                lastActionEpochNumber[msg.sender]
-            ];
-        }
-
-        if (epochNumber == lastActionEpochNumber[msg.sender]) {
-            amount[msg.sender][epochNumber] += _amount;
+        if (epochNumber < 1) {
+            amount[msg.sender][0] += _amount;
         } else {
-            amount[msg.sender][epochNumber] =
-                amount[msg.sender][epochNumber - 1] +
-                _amount;
+            for (
+                uint256 index = epochNumber - 1;
+                index > lastActionEpochNumber[msg.sender];
+                index--
+            ) {
+                amount[msg.sender][index] = amount[msg.sender][
+                    lastActionEpochNumber[msg.sender]
+                ];
+            }
+
+            if (epochNumber == lastActionEpochNumber[msg.sender]) {
+                amount[msg.sender][epochNumber] += _amount;
+            } else {
+                amount[msg.sender][epochNumber] =
+                    amount[msg.sender][epochNumber - 1] +
+                    _amount;
+            }
         }
 
         if (
@@ -242,14 +246,16 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         }
 
         uint256 pendingReward;
-        for (
-            uint256 index = pendingClaimEpochNumber[msg.sender];
-            index < epochNumber - 1;
-            index++
-        ) {
-            pendingReward +=
-                (amount[msg.sender][index] * apy[index]) /
-                DENOMINATOR;
+        if (epochNumber > 1) {
+            for (
+                uint256 index = pendingClaimEpochNumber[msg.sender];
+                index < epochNumber - 1;
+                index++
+            ) {
+                pendingReward +=
+                    (amount[msg.sender][index] * apy[index]) /
+                    DENOMINATOR;
+            }
         }
 
         if (pendingReward > 0) {
@@ -301,28 +307,25 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         view
         returns (uint256 pendingReward)
     {
-        for (
-            uint256 index = pendingClaimEpochNumber[user];
-            index < lastActionEpochNumber[user] - 1;
-            index++
-        ) {
-            pendingReward += (amount[user][index] * apy[index]) / DENOMINATOR;
-        }
+        if (block.timestamp >= startTime + epochLength) {
+            uint256 newEpochNumber = (block.timestamp - startTime) /
+                epochLength;
+            for (
+                uint256 index = pendingClaimEpochNumber[user];
+                index < newEpochNumber;
+                index++
+            ) {
+                uint256 amountValue = amount[user][index] > 0
+                    ? amount[user][index]
+                    : amount[user][lastActionEpochNumber[user]];
+                uint256 apyValue = (
+                    apy[index] > 0 ? apy[index] : apy[epochNumber]
+                );
+                pendingReward += (amountValue * apyValue) / DENOMINATOR;
+            }
 
-        uint256 newEpochNumber = (block.timestamp - startTime) / epochLength;
-        for (
-            uint256 index = lastActionEpochNumber[user] - 1;
-            index < newEpochNumber;
-            index++
-        ) {
-            uint256 amountValue = amount[user][index] > 0
-                ? amount[user][index]
-                : amount[user][lastActionEpochNumber[user]];
-            uint256 apyValue = (apy[index] > 0 ? apy[index] : apy[epochNumber]);
-            pendingReward += (amountValue * apyValue) / DENOMINATOR;
+            pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
         }
-
-        pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
     }
 
     function _setNewEpoch() internal {
