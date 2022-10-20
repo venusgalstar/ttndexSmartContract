@@ -8,14 +8,11 @@ import "./utils/Pausable.sol";
 import "./utils/ReentrancyGuard.sol";
 
 contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
-    uint256 public constant CIRCULATING_FUNDS_PERCENT = 3000; // 30%
-
     uint256 public constant MIN_APY = 1; // for only test
     uint256 public constant MAX_APY = 10**6; // for only test
 
     uint256 public constant REFERRAL_PERCENT = 1000; // 10%
-    uint256 public constant DEPOSIT_FEE = 100; // 1%
-    uint256 public constant WITHDRAW_FEE = 50; // 0.5%
+    uint256 public constant WITHDRAW_FEE = 100; // 1%
     uint256 public constant DEV_FEE = 1000; // 10%
 
     uint256 public constant DENOMINATOR = 10000; // 1: 0.01%(0.0001), 100: 1%(0.01), 10000: 100%(1)
@@ -23,18 +20,11 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     uint256 public immutable startTime;
     uint256 public immutable epochLength;
 
-    uint256 public MIN_DEPOSIT_AMOUNT = 20; // Note: 20 * 10**decimals
-    uint256 public MAX_DEPOSIT_AMOUNT = 25000; // Note: 25000 * 10**decimals
-
     address public bank;
     address public treasury;
     address public devWallet;
 
     IERC20 public stakedToken;
-    IERC20 public rewardToken;
-
-    uint8 public stakedDecimals;
-    uint8 public rewardDecimals;
 
     uint256 public epochNumber; // increase one by one per epoch
     uint256 public totalAmount; // total staked amount
@@ -54,12 +44,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     event LogSetDevWallet(address indexed devWallet);
     event LogSetTreasury(address indexed treasury);
     event LogSetBank(address indexed bank);
-    event LogSetStakedToken(address indexed stakedToken, uint8 stakedDecimals);
-    event LogSetRewardToken(address indexed rewardToken, uint8 rewardDecimals);
-    event LogSetMinMaxDepositAmount(
-        uint256 indexed minAmount,
-        uint256 indexed maxAmount
-    );
+    event LogSetStakedToken(address indexed stakedToken);
     event LogSetAPY(uint256 indexed apy);
     event LogDeposit(
         address indexed staker,
@@ -90,7 +75,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
     constructor(
         IERC20 _stakedToken,
-        IERC20 _rewardToken,
         address _bank,
         uint256 _epochLength,
         uint256 _apy,
@@ -98,7 +82,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         address _devWallet
     ) {
         setStakedToken(_stakedToken);
-        setRewardToken(_rewardToken);
         setBank(_bank);
         epochLength = _epochLength;
         apy[0] = _apy;
@@ -144,29 +127,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
     function setStakedToken(IERC20 _stakedToken) public onlyOwner {
         stakedToken = _stakedToken;
-        stakedDecimals = _stakedToken.decimals();
-        emit LogSetStakedToken(address(stakedToken), stakedDecimals);
-    }
-
-    function setRewardToken(IERC20 _rewardToken) public onlyOwner {
-        rewardToken = _rewardToken;
-        rewardDecimals = _rewardToken.decimals();
-        emit LogSetRewardToken(address(rewardToken), rewardDecimals);
-    }
-
-    function setMinMaxDepositAmount(uint256 _minAmount, uint256 _maxAmount)
-        external
-        onlyOwner
-    {
-        require(
-            _minAmount <= _maxAmount,
-            "setMinMaxDepositAmount: MIN_MAX_FAIL"
-        );
-
-        MIN_DEPOSIT_AMOUNT = _minAmount;
-        MAX_DEPOSIT_AMOUNT = _maxAmount;
-
-        emit LogSetMinMaxDepositAmount(_minAmount, _maxAmount);
+        emit LogSetStakedToken(address(stakedToken));
     }
 
     function _setAPY(uint256 _apy) internal {
@@ -184,37 +145,11 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         whenNotPaused
         nonReentrant
     {
-        require(
-            MIN_DEPOSIT_AMOUNT * 10**stakedDecimals <= _amount &&
-                _amount <= MAX_DEPOSIT_AMOUNT * 10**stakedDecimals,
-            "deposit: OUT_BOUNDARY"
-        );
-
         _setNewEpoch();
-
-        uint256 depositFee = (_amount * DEPOSIT_FEE) / DENOMINATOR;
 
         require(
             stakedToken.transferFrom(msg.sender, address(this), _amount),
             "deposit: TRANSFERFROM_FAIL"
-        );
-
-        require(
-            stakedToken.transferFrom(
-                msg.sender,
-                treasury,
-                (depositFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
-            ),
-            "deposit: TRANSFERFROM_TO_TREASURY_FAIL"
-        );
-
-        require(
-            stakedToken.transferFrom(
-                msg.sender,
-                devWallet,
-                (depositFee * DEV_FEE) / DENOMINATOR
-            ),
-            "deposit: TRANSFERFROM_TO_DEV_FAIL"
         );
 
         totalAmount += _amount;
@@ -259,13 +194,12 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
 
         require(
-            stakedToken.transfer(msg.sender, _amount),
+            stakedToken.transfer(msg.sender, _amount - withdrawFee),
             "withdraw: TRANSFER_FAIL"
         );
 
         require(
-            stakedToken.transferFrom(
-                msg.sender,
+            stakedToken.transfer(
                 treasury,
                 (withdrawFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
             ),
@@ -273,8 +207,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         );
 
         require(
-            stakedToken.transferFrom(
-                msg.sender,
+            stakedToken.transfer(
                 devWallet,
                 (withdrawFee * DEV_FEE) / DENOMINATOR
             ),
@@ -329,10 +262,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 DENOMINATOR;
         }
 
-        pendingReward =
-            (pendingReward / 10**stakedDecimals) *
-            10**rewardDecimals;
-
         if (pendingReward > 0) {
             hasReward = true;
 
@@ -340,10 +269,24 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 DENOMINATOR;
 
             pendingReward -= referralReward;
+            uint256 withdrawFee = (pendingReward * WITHDRAW_FEE) / DENOMINATOR;
 
             require(
-                rewardToken.transferFrom(treasury, msg.sender, pendingReward),
+                stakedToken.transferFrom(
+                    treasury,
+                    msg.sender,
+                    pendingReward - withdrawFee
+                ),
                 "_withdrawReward: TRANSFERFROM_FAIL"
+            );
+
+            require(
+                stakedToken.transferFrom(
+                    treasury,
+                    devWallet,
+                    (withdrawFee * DEV_FEE) / DENOMINATOR
+                ),
+                "_withdrawReward: TRANSFERFROM_TO_DEV_FAIL"
             );
 
             referralRewards[referrals[msg.sender]] += referralReward;
@@ -393,10 +336,6 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             pendingReward += (amountValue * apyValue) / DENOMINATOR;
         }
 
-        pendingReward =
-            (pendingReward / 10**stakedDecimals) *
-            10**rewardDecimals;
-
         pendingReward -= (pendingReward * REFERRAL_PERCENT) / DENOMINATOR;
     }
 
@@ -425,7 +364,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             "withdrawReferral: ZERO_AMOUNT"
         );
         require(
-            rewardToken.transferFrom(
+            stakedToken.transferFrom(
                 treasury,
                 msg.sender,
                 referralRewards[msg.sender]
@@ -451,7 +390,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
             "injectFunds: TRANSFERFROM_INJECT_FAIL"
         );
         require(
-            rewardToken.transferFrom(bank, treasury, _rewardAmount),
+            stakedToken.transferFrom(bank, treasury, _rewardAmount),
             "injectFunds: TRANSFERFROM_REWARD_FAIL"
         );
 
@@ -462,8 +401,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
      * @notice Eject funds to make profit for stakers.
      */
     function ejectFunds(uint256 _amount) external onlyOwner {
-        uint256 ejectEnabledAmount = (stakedToken.balanceOf(address(this)) *
-            (DENOMINATOR - CIRCULATING_FUNDS_PERCENT)) / DENOMINATOR;
+        uint256 ejectEnabledAmount = stakedToken.balanceOf(address(this));
 
         require(
             _amount <= ejectEnabledAmount,
