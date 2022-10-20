@@ -225,7 +225,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
             require(
                 _amount <= enableAmount && _amount <= requestAmount,
-                "withdraw: INSUFFICIENT_REQUEST_AMOUNT"
+                "withdraw: INSUFFICIENT_REQUEST_OR_ENABLE_AMOUNT"
             );
 
             userInfo[msg.sender].requestAmount -= _amount;
