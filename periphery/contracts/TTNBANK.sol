@@ -8,6 +8,16 @@ import "./utils/Pausable.sol";
 import "./utils/ReentrancyGuard.sol";
 
 contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
+    struct UserInfo {
+        uint256 requestAmount; // staker => requestAmount
+        uint256 requestEpochNumber; // staker => requestEpochNumber
+        uint256 pendingClaimEpochNumber; // staker => pendingClaimEpochNumber
+        uint256 lastActionEpochNumber; // staker => lastActionEpochNumber
+        uint256 lastRewards; // staker => lastReward
+        uint256 totalRewards; // staker => totalReward
+        address referrals; // staker => referral
+    }
+
     uint256 public constant MIN_APY = 1; // for only test
     uint256 public constant MAX_APY = 10**6; // for only test
 
@@ -17,8 +27,9 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public constant DENOMINATOR = 10000; // 1: 0.01%(0.0001), 100: 1%(0.01), 10000: 100%(1)
 
-    uint256 public immutable startTime;
-    uint256 public immutable epochLength;
+    uint256 public immutable START_TIME;
+    uint256 public immutable EPOCH_LENGTH;
+    uint256 public immutable WITHDRAW_TIME;
 
     address public bank;
     address public treasury;
@@ -32,12 +43,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => uint256) public apy; // epochNumber => apy, apyValue = (apy / DENOMINATOR * 100) %
 
     mapping(address => mapping(uint256 => uint256)) public amount; // staker => (epochNumber => stakedAmount)
-    mapping(address => uint256) public requestTime; // staker => requestTime
-    mapping(address => uint256) public pendingClaimEpochNumber; // staker => pendingClaimEpochNumber
-    mapping(address => uint256) public lastActionEpochNumber; // staker => lastActionEpochNumber
-    mapping(address => uint256) public lastRewards; // staker => lastReward
-    mapping(address => uint256) public totalRewards; // staker => totalReward
-    mapping(address => address) public referrals; // staker => referral
+    mapping(address => UserInfo) public userInfo; // staker => userInfo
 
     mapping(address => uint256) public referralRewards; // referral => referralReward
     mapping(address => uint256) public referralTotalRewards; // referral => referral => referralReward
@@ -77,19 +83,21 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     constructor(
         IERC20 _stakedToken,
         address _bank,
-        uint256 _epochLength,
         uint256 _apy,
         address _treasury,
         address _devWallet,
-        uint256 _startTime
+        uint256 _startTime,
+        uint256 _epochLength,
+        uint256 _withdrawTime
     ) {
         setStakedToken(_stakedToken);
         setBank(_bank);
-        epochLength = _epochLength;
-        apy[0] = _apy;
+        _setAPY(_apy);
         setTreasury(_treasury);
         setDevWallet(_devWallet);
-        startTime = _startTime;
+        START_TIME = _startTime;
+        EPOCH_LENGTH = _epochLength;
+        WITHDRAW_TIME = _withdrawTime;
     }
 
     function setDevWallet(address _devWallet) public onlyOwner {
@@ -160,15 +168,15 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         } else {
             for (
                 uint256 index = epochNumber - 1;
-                index > lastActionEpochNumber[msg.sender];
+                index > userInfo[msg.sender].lastActionEpochNumber;
                 index--
             ) {
                 amount[msg.sender][index] = amount[msg.sender][
-                    lastActionEpochNumber[msg.sender]
+                    userInfo[msg.sender].lastActionEpochNumber
                 ];
             }
 
-            if (epochNumber == lastActionEpochNumber[msg.sender]) {
+            if (epochNumber == userInfo[msg.sender].lastActionEpochNumber) {
                 amount[msg.sender][epochNumber] += _amount;
             } else {
                 amount[msg.sender][epochNumber] =
@@ -178,77 +186,94 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         }
 
         if (
-            referrals[msg.sender] == address(0) &&
+            userInfo[msg.sender].referrals == address(0) &&
             _referral != msg.sender &&
             _referral != address(0)
         ) {
-            referrals[msg.sender] = _referral;
+            userInfo[msg.sender].referrals = _referral;
             emit LogSetReferral(msg.sender, _referral);
         }
 
-        lastActionEpochNumber[msg.sender] = epochNumber;
+        userInfo[msg.sender].lastActionEpochNumber = epochNumber;
 
         emit LogDeposit(msg.sender, epochNumber, _amount);
     }
 
     function withdraw(uint256 _amount) external whenNotPaused nonReentrant {
-        require(_amount > 0, "withdraw: ZERO_WITHDRAW_AMOUNT");
-
-        _withdrawReward();
-
-        uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
-
+        bool hasReward = _withdrawReward();
         require(
-            stakedToken.transfer(msg.sender, _amount - withdrawFee),
-            "withdraw: TRANSFER_FAIL"
+            hasReward || _amount > 0,
+            "withdraw: NO_REWARD_OR_ZERO_WITHDRAW"
         );
 
-        require(
-            stakedToken.transfer(
-                treasury,
-                (withdrawFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
-            ),
-            "withdraw: TRANSFERFROM_TO_TREASURY_FAIL"
-        );
+        userInfo[msg.sender].lastActionEpochNumber = epochNumber;
 
-        require(
-            stakedToken.transfer(
-                devWallet,
-                (withdrawFee * DEV_FEE) / DENOMINATOR
-            ),
-            "withdraw: TRANSFERFROM_TO_DEV_FAIL"
-        );
+        if (_amount > 0) {
+            uint256 withdrawStart = START_TIME +
+                userInfo[msg.sender].requestEpochNumber *
+                EPOCH_LENGTH;
+            require(
+                withdrawStart <= block.timestamp &&
+                    block.timestamp < withdrawStart + WITHDRAW_TIME,
+                "withdraw: TIME_OVER"
+            );
 
-        totalAmount -= _amount;
+            uint256 requestAmount = userInfo[msg.sender].requestAmount;
+            uint256 enableAmount = amount[msg.sender][
+                userInfo[msg.sender].requestEpochNumber - 1
+            ];
+            require(
+                _amount <= requestAmount && _amount <= enableAmount,
+                "withdraw: INSUFFICIENT_REQUEST_AMOUNT"
+            );
 
-        require(
-            amount[msg.sender][epochNumber] >= _amount,
-            "withdraw: INSUFFICIENT_STAKED_NEXT_BALANCE"
-        );
+            uint256 withdrawFee = (_amount * WITHDRAW_FEE) / DENOMINATOR;
 
-        amount[msg.sender][epochNumber] -= _amount;
+            require(
+                stakedToken.transfer(msg.sender, _amount - withdrawFee),
+                "withdraw: TRANSFER_FAIL"
+            );
 
-        lastActionEpochNumber[msg.sender] = epochNumber;
+            require(
+                stakedToken.transfer(
+                    treasury,
+                    (withdrawFee * (DENOMINATOR - DEV_FEE)) / DENOMINATOR
+                ),
+                "withdraw: TRANSFERFROM_TO_TREASURY_FAIL"
+            );
 
-        emit LogWithdraw(msg.sender, epochNumber, _amount);
+            require(
+                stakedToken.transfer(
+                    devWallet,
+                    (withdrawFee * DEV_FEE) / DENOMINATOR
+                ),
+                "withdraw: TRANSFERFROM_TO_DEV_FAIL"
+            );
+
+            totalAmount -= _amount;
+
+            amount[msg.sender][epochNumber] -= _amount;
+
+            emit LogWithdraw(msg.sender, epochNumber, _amount);
+        }
     }
 
     function _withdrawReward() internal returns (bool hasReward) {
         _setNewEpoch();
         for (
             uint256 index = epochNumber;
-            index > lastActionEpochNumber[msg.sender];
+            index > userInfo[msg.sender].lastActionEpochNumber;
             index--
         ) {
             amount[msg.sender][index] = amount[msg.sender][
-                lastActionEpochNumber[msg.sender]
+                userInfo[msg.sender].lastActionEpochNumber
             ];
         }
 
         uint256 pendingReward;
         if (epochNumber > 1) {
             for (
-                uint256 index = pendingClaimEpochNumber[msg.sender];
+                uint256 index = userInfo[msg.sender].pendingClaimEpochNumber;
                 index < epochNumber - 1;
                 index++
             ) {
@@ -256,7 +281,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                     (amount[msg.sender][index] * apy[index]) /
                     DENOMINATOR;
             }
-            pendingClaimEpochNumber[msg.sender] = epochNumber - 1;
+            userInfo[msg.sender].pendingClaimEpochNumber = epochNumber - 1;
         }
 
         if (pendingReward > 0) {
@@ -286,10 +311,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
                 "_withdrawReward: TRANSFERFROM_TO_DEV_FAIL"
             );
 
-            referralRewards[referrals[msg.sender]] += referralReward;
+            referralRewards[userInfo[msg.sender].referrals] += referralReward;
 
-            lastRewards[msg.sender] = pendingReward;
-            totalRewards[msg.sender] += pendingReward;
+            userInfo[msg.sender].lastRewards = pendingReward;
+            userInfo[msg.sender].totalRewards += pendingReward;
 
             emit LogWithdrawReward(msg.sender, epochNumber, pendingReward);
         } else {
@@ -297,27 +322,22 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         }
     }
 
-    function withdrawReward() external whenNotPaused nonReentrant {
-        require(_withdrawReward(), "withdrawReward: NO_REWARD");
-        lastActionEpochNumber[msg.sender] = epochNumber;
-    }
-
     function getPendingReward(address user)
         external
         view
         returns (uint256 pendingReward)
     {
-        if (block.timestamp >= startTime + epochLength) {
-            uint256 newEpochNumber = (block.timestamp - startTime) /
-                epochLength;
+        if (block.timestamp >= START_TIME + EPOCH_LENGTH) {
+            uint256 newEpochNumber = (block.timestamp - START_TIME) /
+                EPOCH_LENGTH;
             for (
-                uint256 index = pendingClaimEpochNumber[user];
+                uint256 index = userInfo[user].pendingClaimEpochNumber;
                 index < newEpochNumber;
                 index++
             ) {
                 uint256 amountValue = amount[user][index] > 0
                     ? amount[user][index]
-                    : amount[user][lastActionEpochNumber[user]];
+                    : amount[user][userInfo[user].lastActionEpochNumber];
                 uint256 apyValue = (
                     apy[index] > 0 ? apy[index] : apy[epochNumber]
                 );
@@ -329,9 +349,9 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _setNewEpoch() internal {
-        if (block.timestamp < startTime) return;
-        uint256 newEpochNumber = (block.timestamp - startTime) /
-            epochLength +
+        if (block.timestamp < START_TIME) return;
+        uint256 newEpochNumber = (block.timestamp - START_TIME) /
+            EPOCH_LENGTH +
             1;
         if (newEpochNumber > epochNumber) {
             uint256 apyValue = apy[epochNumber];
@@ -370,8 +390,16 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         referralRewards[msg.sender] = 0;
     }
 
-    function withdrawRequest() external whenNotPaused nonReentrant {
-        requestTime[msg.sender] = block.timestamp;
+    function withdrawRequest(uint256 _amount)
+        external
+        whenNotPaused
+        nonReentrant
+    {
+        _setNewEpoch();
+        userInfo[msg.sender].requestEpochNumber = epochNumber > 0
+            ? epochNumber
+            : 1;
+        userInfo[msg.sender].requestAmount = _amount;
     }
 
     /**
