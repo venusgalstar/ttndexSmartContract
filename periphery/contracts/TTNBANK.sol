@@ -32,7 +32,8 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => uint256) public apy; // epochNumber => apy, apyValue = (apy / DENOMINATOR * 100) %
 
     mapping(address => mapping(uint256 => uint256)) public amount; // staker => (epochNumber => stakedAmount)
-    mapping(address => uint256) public lastClaimEpochNumber; // staker => lastClaimEpochNumber
+    mapping(address => uint256) public requestTime; // staker => requestTime
+    mapping(address => uint256) public pendingClaimEpochNumber; // staker => pendingClaimEpochNumber
     mapping(address => uint256) public lastActionEpochNumber; // staker => lastActionEpochNumber
     mapping(address => uint256) public lastRewards; // staker => lastReward
     mapping(address => uint256) public totalRewards; // staker => totalReward
@@ -79,16 +80,16 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         uint256 _epochLength,
         uint256 _apy,
         address _treasury,
-        address _devWallet
+        address _devWallet,
+        address _startTime
     ) {
         setStakedToken(_stakedToken);
         setBank(_bank);
         epochLength = _epochLength;
         apy[0] = _apy;
-        _setAPY(_apy);
         setTreasury(_treasury);
         setDevWallet(_devWallet);
-        startTime = block.timestamp;
+        startTime = _startTime;
     }
 
     function setDevWallet(address _devWallet) public onlyOwner {
@@ -131,7 +132,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _setAPY(uint256 _apy) internal {
-        apy[epochNumber + 1] = _apy;
+        apy[epochNumber] = _apy;
         emit LogSetAPY(_apy);
     }
 
@@ -155,20 +156,20 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         totalAmount += _amount;
 
         for (
-            uint256 index = epochNumber;
-            index > lastActionEpochNumber[msg.sender] + 1;
+            uint256 index = epochNumber - 1;
+            index > lastActionEpochNumber[msg.sender];
             index--
         ) {
             amount[msg.sender][index] = amount[msg.sender][
-                lastActionEpochNumber[msg.sender] + 1
+                lastActionEpochNumber[msg.sender]
             ];
         }
 
         if (epochNumber == lastActionEpochNumber[msg.sender]) {
-            amount[msg.sender][epochNumber + 1] += _amount;
+            amount[msg.sender][epochNumber] += _amount;
         } else {
-            amount[msg.sender][epochNumber + 1] =
-                amount[msg.sender][epochNumber] +
+            amount[msg.sender][epochNumber] =
+                amount[msg.sender][epochNumber - 1] +
                 _amount;
         }
 
@@ -183,7 +184,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         lastActionEpochNumber[msg.sender] = epochNumber;
 
-        emit LogDeposit(msg.sender, epochNumber + 1, _amount);
+        emit LogDeposit(msg.sender, epochNumber, _amount);
     }
 
     function withdraw(uint256 _amount) external whenNotPaused nonReentrant {
@@ -216,45 +217,34 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         totalAmount -= _amount;
 
-        if (epochNumber == lastActionEpochNumber[msg.sender]) {
-            require(
-                amount[msg.sender][epochNumber + 1] >= _amount,
-                "withdraw: INSUFFICIENT_STAKED_NEXT_BALANCE"
-            );
+        require(
+            amount[msg.sender][epochNumber] >= _amount,
+            "withdraw: INSUFFICIENT_STAKED_NEXT_BALANCE"
+        );
 
-            amount[msg.sender][epochNumber + 1] -= _amount;
-        } else {
-            require(
-                amount[msg.sender][epochNumber] >= _amount,
-                "withdraw: INSUFFICIENT_STAKED_BALANCE"
-            );
-
-            amount[msg.sender][epochNumber + 1] =
-                amount[msg.sender][epochNumber] -
-                _amount;
-        }
+        amount[msg.sender][epochNumber] -= _amount;
 
         lastActionEpochNumber[msg.sender] = epochNumber;
 
-        emit LogWithdraw(msg.sender, epochNumber + 1, _amount);
+        emit LogWithdraw(msg.sender, epochNumber, _amount);
     }
 
     function _withdrawReward() internal returns (bool hasReward) {
         _setNewEpoch();
         for (
-            uint256 index = epochNumber + 1;
-            index > lastActionEpochNumber[msg.sender] + 1;
+            uint256 index = epochNumber;
+            index > lastActionEpochNumber[msg.sender];
             index--
         ) {
             amount[msg.sender][index] = amount[msg.sender][
-                lastActionEpochNumber[msg.sender] + 1
+                lastActionEpochNumber[msg.sender]
             ];
         }
 
         uint256 pendingReward;
         for (
-            uint256 index = lastClaimEpochNumber[msg.sender];
-            index < epochNumber;
+            uint256 index = pendingClaimEpochNumber[msg.sender];
+            index < epochNumber - 1;
             index++
         ) {
             pendingReward +=
@@ -291,7 +281,7 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
             referralRewards[referrals[msg.sender]] += referralReward;
 
-            lastClaimEpochNumber[msg.sender] = epochNumber;
+            pendingClaimEpochNumber[msg.sender] = epochNumber - 1;
             lastRewards[msg.sender] = pendingReward;
             totalRewards[msg.sender] += pendingReward;
 
@@ -312,8 +302,8 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         returns (uint256 pendingReward)
     {
         for (
-            uint256 index = lastClaimEpochNumber[user];
-            index < lastActionEpochNumber[user];
+            uint256 index = pendingClaimEpochNumber[user];
+            index < lastActionEpochNumber[user] - 1;
             index++
         ) {
             pendingReward += (amount[user][index] * apy[index]) / DENOMINATOR;
@@ -321,18 +311,14 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
 
         uint256 newEpochNumber = (block.timestamp - startTime) / epochLength;
         for (
-            uint256 index = lastActionEpochNumber[user];
+            uint256 index = lastActionEpochNumber[user] - 1;
             index < newEpochNumber;
             index++
         ) {
-            uint256 amountValue = (index == lastActionEpochNumber[user])
+            uint256 amountValue = amount[user][index] > 0
                 ? amount[user][index]
-                : amount[user][lastActionEpochNumber[user] + 1];
-            uint256 apyValue = (
-                apy[index] > 0 ? apy[index] : (apy[epochNumber + 1] > 0)
-                    ? apy[epochNumber + 1]
-                    : apy[epochNumber]
-            );
+                : amount[user][lastActionEpochNumber[user]];
+            uint256 apyValue = (apy[index] > 0 ? apy[index] : apy[epochNumber]);
             pendingReward += (amountValue * apyValue) / DENOMINATOR;
         }
 
@@ -340,16 +326,19 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
     }
 
     function _setNewEpoch() internal {
-        uint256 newEpochNumber = (block.timestamp - startTime) / epochLength;
+        if (block.timestamp < startTime) return;
+        uint256 newEpochNumber = (block.timestamp - startTime) /
+            epochLength +
+            1;
         if (newEpochNumber > epochNumber) {
             uint256 apyValue = apy[epochNumber];
 
             for (
                 uint256 index = epochNumber + 1;
-                index <= newEpochNumber + 1;
+                index <= newEpochNumber;
                 index++
             ) {
-                apy[index] = apy[index] > 0 ? apy[index] : apyValue;
+                apy[index] = apyValue;
             }
 
             epochNumber = newEpochNumber;
@@ -376,6 +365,10 @@ contract TTNBANK is Ownable, Pausable, ReentrancyGuard {
         emit LogWithdrawReferral(msg.sender, referralRewards[msg.sender]);
 
         referralRewards[msg.sender] = 0;
+    }
+
+    function withdrawRequest() external whenNotPaused nonReentrant {
+        requestTime[msg.sender] = block.timestamp;
     }
 
     /**
