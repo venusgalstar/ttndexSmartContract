@@ -207,7 +207,7 @@ contract TTNPLockPool is Ownable, ReentrancyGuard, Pausable {
             user.amount = user.amount - _amount;
             pool.amount = pool.amount - _amount;
 
-            if(user.amount > 0 && _lockTime != 0) {
+            if(user.amount > 0) {
                 require(_lockTime >= MIN_LOCK_TIME, "Minimum lock period is one week");
                 user.lockEndTime = block.timestamp + _lockTime;
             }
