@@ -5,6 +5,7 @@ pragma solidity 0.8.4;
 import "./utils/SafeERC20.sol";
 import "./utils/Ownable.sol";
 import "./utils/ReentrancyGuard.sol";
+import "./utils/Pausable.sol";
 import "./interfaces/IMasterChef.sol";
 import "./TTNDEXReferral.sol";
 
@@ -13,7 +14,7 @@ import "./TTNDEXReferral.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
-contract TTNPFlexiblePool is Ownable, ReentrancyGuard {
+contract TTNPFlexiblePool is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     // Info of each user.
@@ -159,7 +160,7 @@ contract TTNPFlexiblePool is Ownable, ReentrancyGuard {
     }
 
     // Deposit tokens to StakingVault for Main allocation.
-    function deposit(uint256 _amount, address _referrer) external nonReentrant {
+    function deposit(uint256 _amount, address _referrer) external nonReentrant whenNotPaused {
         PoolInfo storage pool = poolInfo;
         UserInfo storage user = userInfo[msg.sender];
         updatePool();
@@ -182,7 +183,7 @@ contract TTNPFlexiblePool is Ownable, ReentrancyGuard {
     }
 
     // Withdraw tokens from StakingVault.
-    function withdraw(uint256 _amount) external nonReentrant {
+    function withdraw(uint256 _amount) external nonReentrant whenNotPaused {
         PoolInfo storage pool = poolInfo;
         UserInfo storage user = userInfo[msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -221,6 +222,14 @@ contract TTNPFlexiblePool is Ownable, ReentrancyGuard {
             "setReferralCommissionRate: invalid referral commission rate basis points"
         );
         referralCommissionRate = _referralCommissionRate;
+    }
+
+    function setPause() external onlyOwner {
+        _pause();
+    }
+
+    function setUnpause() external onlyOwner {
+        _unpause();
     }
 
     // Withdraw referral commission to the referrer who referred this user.
