@@ -46,6 +46,8 @@ contract TTNPLockPool is Ownable, ReentrancyGuard, Pausable {
 
     IMasterChef public immutable masterchef;
     uint256 public immutable ttnpLockPoolPID;
+    // Whether it is initialized
+    bool public isInitialized;
     // The Main TOKEN
     IERC20 public immutable ttnp;
 
@@ -78,26 +80,34 @@ contract TTNPLockPool is Ownable, ReentrancyGuard, Pausable {
      * @param _masterchef MasterChef address
      * @param _pid Pid value of TTNPLockPool in MasterChef
      * @param _referral TTNDEXReferral Address
-     * @param _dummyToken The address of the token to be deposited into MC.
      */
     constructor(
         IERC20 _ttnp,
         IMasterChef _masterchef,
         uint256 _pid,
-        address _referral,
-        IERC20 _dummyToken
+        address _referral
     ) {
         ttnp = _ttnp;
         masterchef = _masterchef;
         ttnpLockPoolPID = _pid;
 
         referral = TTNDEXReferral(_referral);
+    }
+
+    /**
+     * @param _dummyToken The address of the token to be deposited into MC.
+     */
+    function init(IERC20 _dummyToken) external onlyOwner {
+        require(!isInitialized, "Already initialized");
+
+        // Make this contract initialized
+        isInitialized = true;
 
         uint256 balance = _dummyToken.balanceOf(msg.sender);
         require(balance != 0, "Balance must exceed 0");
         _dummyToken.safeTransferFrom(msg.sender, address(this), balance);
-        _dummyToken.approve(address(_masterchef), balance);
-        _masterchef.deposit(_pid, balance, address(0));
+        _dummyToken.approve(address(masterchef), balance);
+        masterchef.deposit(ttnpLockPoolPID, balance, address(0));
 
         poolInfo = PoolInfo({amount: 0, accTokenPerShare: 0});
     }
