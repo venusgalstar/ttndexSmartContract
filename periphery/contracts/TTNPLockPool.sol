@@ -76,7 +76,7 @@ contract TTNPLockPool is Ownable, ReentrancyGuard, Pausable {
      * It will transfer all the `_dummyToken` in the tx sender address.
      * @param _ttnp Main token contract address
      * @param _masterchef MasterChef address
-     * @param _pid Pid value of TTNPFlexiblePool in MasterChef
+     * @param _pid Pid value of TTNPLockPool in MasterChef
      * @param _referral TTNDEXReferral Address
      * @param _dummyToken The address of the token to be deposited into MC.
      */
